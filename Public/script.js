@@ -1,0 +1,1579 @@
+/* =========================
+   GLOBAL VARIABEL & FETCH INTERCEPTOR
+========================= */
+const originalFetch = window.fetch;
+window.fetch = async function() {
+    let [resource, config] = arguments;
+    
+    const token = localStorage.getItem('token');
+    if (token && typeof resource === 'string' && resource.startsWith('/')) {
+        if (!config) config = {};
+        if (!config.headers) {
+            config.headers = { 'Authorization': 'Bearer ' + token };
+        } else if (config.headers instanceof Headers) {
+            config.headers.append('Authorization', 'Bearer ' + token);
+        } else {
+            config.headers['Authorization'] = 'Bearer ' + token;
+        }
+    }
+    
+    const response = await originalFetch(resource, config);
+    if (response.status === 401 || response.status === 403) {
+        if (window.location.pathname !== '/index.html' && window.location.pathname !== '/') {
+            alert("Sesi anda telah berakhir atau akses ditolak. Silakan login kembali.");
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = '/index.html';
+        }
+    }
+    return response;
+};
+
+let currentPage = 1;
+const rowsPerPage = 10;
+
+// Menyimpan instance chart agar bisa di-reset saat data diperbarui
+let salesChartInstance = null;
+let profitChartInstance = null;
+
+/* =========================
+   SETTING HARGA (Default fallback)
+========================= */
+let settingHarga = {
+    modalWarung: 16000,
+    jualWarung: 18000,
+    modalEcer: 16000,
+    jualEcer: 19000,
+    modalAquaWarung: 14000,
+    jualAquaWarung: 16000,
+    modalAquaEcer: 15000,
+    jualAquaEcer: 18000
+};
+
+let cachedLogs = []; // Cache data log aktivitas untuk filtering client-side
+
+/* =========================
+   TOAST NOTIFICATION SYSTEM
+========================= */
+function showToast(message, type = 'info', duration = 3500) {
+    const container = document.getElementById('toastContainer');
+    if (!container) {
+        alert(message); // Fallback jika toast container tidak ada
+        return;
+    }
+
+    const icons = {
+        success: 'ri-check-line',
+        error: 'ri-error-warning-line',
+        info: 'ri-information-line',
+        warning: 'ri-alert-line'
+    };
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<i class="${icons[type] || icons.info}"></i> ${message}`;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('toast-exit');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+/* =========================
+   INIT ON LOAD (SINKRON)
+========================= */
+document.addEventListener("DOMContentLoaded", async () => {
+    jalankanProteksiAkses();
+    initFilterDates(); // 🔥 Tambahan: Set default tanggal filter hari ini agar download PDF langsung siap
+    // 🔥 Ambil setting harga dulu sampai selesai, baru muat data stok biar profit gak ngaco!
+    await loadSettingHarga();
+    loadData();
+});
+
+/* =========================
+   FUNGSI SET DEFAULT TANGGAL (BARU)
+========================= */
+function initFilterDates() {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Set auto tanggal di form input stock jika ada
+    if (document.getElementById("tanggal") && !document.getElementById("tanggal").value) {
+        document.getElementById("tanggal").value = today;
+    }
+    // Set auto tanggal di filter laporan jika ada
+    if (document.getElementById("startDate") && !document.getElementById("startDate").value) {
+        document.getElementById("startDate").value = today;
+    }
+    if (document.getElementById("endDate") && !document.getElementById("endDate").value) {
+        document.getElementById("endDate").value = today;
+    }
+}
+
+/* =========================
+   FUNGSI AMBIL HARGA DARI SERVER
+========================= */
+async function loadSettingHarga() {
+    try {
+        const res = await fetch("/api/setting-harga");
+        if (res.ok) {
+            const data = await res.json();
+            // Update variabel global dengan data asli dari database
+            settingHarga = {
+                modalWarung: Number(data.modalWarung) || 16000,
+                jualWarung: Number(data.jualWarung) || 18000,
+                modalEcer: Number(data.modalEcer) || 16000,
+                jualEcer: Number(data.jualEcer) || 19000,
+                modalAquaWarung: Number(data.modalAquaWarung) || 14000,
+                jualAquaWarung: Number(data.jualAquaWarung) || 16000,
+                modalAquaEcer: Number(data.modalAquaEcer) || 15000,
+                jualAquaEcer: Number(data.jualAquaEcer) || 18000
+            };
+            
+            // Masukkan ke elemen input jika halaman setting terbuka
+            if (document.getElementById("modalWarung")) document.getElementById("modalWarung").value = settingHarga.modalWarung;
+            if (document.getElementById("jualWarung")) document.getElementById("jualWarung").value = settingHarga.jualWarung;
+            if (document.getElementById("modalEcer")) document.getElementById("modalEcer").value = settingHarga.modalEcer;
+            if (document.getElementById("jualEcer")) document.getElementById("jualEcer").value = settingHarga.jualEcer;
+            if (document.getElementById("modalAquaWarung")) document.getElementById("modalAquaWarung").value = settingHarga.modalAquaWarung;
+            if (document.getElementById("jualAquaWarung")) document.getElementById("jualAquaWarung").value = settingHarga.jualAquaWarung;
+            if (document.getElementById("modalAquaEcer")) document.getElementById("modalAquaEcer").value = settingHarga.modalAquaEcer;
+            if (document.getElementById("jualAquaEcer")) document.getElementById("jualAquaEcer").value = settingHarga.jualAquaEcer;
+        }
+    } catch (err) {
+        console.error("Gagal mengambil data setting harga dari server:", err);
+    }
+}
+
+/* =========================
+   MENU PAGE (ANTI BOCOR)
+========================= */
+function showPage(pageId){
+    const role = localStorage.getItem("role") || "user";
+
+    // 🛑 BARIKADE UTAMA
+    if (role === "user" && pageId !== "dashboardPage" && pageId !== "inputPage") {
+        alert("Waduh, lu ga punya akses ke halaman ini! ⛔");
+        showPage("dashboardPage"); 
+        return;
+    }
+
+    const pages = ["dashboardPage", "inputPage", "settingPage", "logsPage"];
+    pages.forEach(page => {
+        const el = document.getElementById(page);
+        if (el) {
+            el.style.display = "none";
+            el.classList.remove("active");
+        }
+    });
+
+    const targetPage = document.getElementById(pageId);
+    if(targetPage) {
+        targetPage.style.display = "block";
+        targetPage.classList.add("active");
+    }
+
+    const menus = document.querySelectorAll(".menu-item");
+    menus.forEach(menu => {
+        menu.classList.remove("active");
+        const onClickAttr = menu.getAttribute("onclick") || "";
+        if (onClickAttr.includes(`showPage('${pageId}')`) || onClickAttr.includes(`showPage("${pageId}")`)) {
+            menu.classList.add("active");
+        }
+    });
+
+    if(pageId === "settingPage"){
+        loadRegisteredUsers();
+        loadSettingHarga(); 
+        const themeSelect = document.getElementById('configThemeSelect');
+        const fontSelect = document.getElementById('configFontSelect');
+        if (themeSelect) themeSelect.value = localStorage.getItem('app_theme') || 'light';
+        if (fontSelect) fontSelect.value = localStorage.getItem('app_font') || 'Inter';
+    }
+
+    if(pageId === "logsPage"){
+        loadLogs();
+    }
+    
+    if(pageId === "dashboardPage"){
+        loadData();
+    }
+
+    if(pageId === "inputPage"){
+        initFilterDates(); // Pastikan tanggal terisi saat pindah ke halaman input
+    }
+    
+    // Auto-close sidebar after clicking a menu item (all screen sizes)
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("mobileOverlay");
+    if (sidebar && overlay) {
+        sidebar.classList.remove("show-sidebar");
+        overlay.classList.remove("show-overlay");
+    }
+}
+
+/* =========================
+   MOBILE MENU TOGGLE
+========================= */
+function toggleMobileMenu() {
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("mobileOverlay");
+    
+    if (sidebar && overlay) {
+        sidebar.classList.toggle("show-sidebar");
+        overlay.classList.toggle("show-overlay");
+    }
+}
+
+/* =========================
+   SIMPAN DATA STOCK
+========================= */
+async function simpan(){
+    const tanggal = document.getElementById("tanggal").value;
+    const kategori = document.getElementById("kategori").value;
+    const masuk = parseInt(document.getElementById("masuk").value) || 0;
+    const keluar = parseInt(document.getElementById("keluar").value) || 0;
+    const namaPenginput = localStorage.getItem("username") || "admin";
+
+    if (!tanggal) {
+        showToast("Pilih tanggal dulu bro! 📅", "warning");
+        return;
+    }
+
+    if (masuk < 0 || keluar < 0) {
+        showToast("Jumlah masuk/keluar tidak boleh negatif! ❌", "warning");
+        return;
+    }
+
+    if (masuk === 0 && keluar === 0) {
+        showToast("Masukkan jumlah masuk atau keluar dulu bro! ❌", "warning");
+        return;
+    }
+
+    try {
+        const res = await fetch("/add",{
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tanggal, kategori, masuk, keluar, username: namaPenginput })
+        });
+
+        if (res.ok) {
+            showToast("Data Stock berhasil disimpan! 📝", "success");
+            document.getElementById("masuk").value = "";
+            document.getElementById("keluar").value = "";
+            initFilterDates(); // Reset tanggal ke hari ini
+            loadData();
+        } else {
+            showToast("Gagal menyimpan data ke server.", "error");
+        }
+    } catch (err) {
+        console.error("Gagal menyimpan stok:", err);
+        showToast("Terjadi kesalahan jaringan.", "error");
+    }
+}
+
+/* =========================
+   LOAD DATA UTAMA & DASHBOARD
+========================= */
+async function loadData(){
+    try {
+        const res = await fetch("/data");
+        let data = await res.json();
+
+        // Urutkan data berdasarkan tanggal secara menaik (oldest to newest) 
+        // agar perhitungan saldo akumulatif stok di pangkalan gas berjalan akurat
+        data.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+
+        let html = "";
+        let totalMasukGas = 0;
+        let totalKeluarGas = 0;
+        let totalMasukAqua = 0;
+        let totalKeluarAqua = 0;
+        let profitGas = 0;
+        let profitAqua = 0;
+        let runningGas = 0;   // 🔥 Running stock for Gas
+        let runningAqua = 0;  // 🔥 Running stock for Aqua
+
+        const chartDataMap = {};
+
+        data.forEach(item => {
+            const masuk = Number(item.masuk) || 0;
+            const keluar = Number(item.keluar) || 0;
+            
+            // Hitung sisa riil berjalan (Saldo Awal + Masuk - Keluar) secara terpisah
+            if (item.kategori === "Aqua Warung" || item.kategori === "Aqua Ecer") {
+                runningAqua += (masuk - keluar);
+                item.sisaBerjalan = runningAqua;
+            } else {
+                runningGas += (masuk - keluar);
+                item.sisaBerjalan = runningGas;
+            }
+
+            let itemProfit = 0;
+
+            if (item.kategori === "LPG Warung" || item.kategori === "Warung") {
+                itemProfit = keluar * (settingHarga.jualWarung - settingHarga.modalWarung);
+                profitGas += itemProfit;
+            } else if (item.kategori === "LPG Ecer" || item.kategori === "Ecer") {
+                itemProfit = keluar * (settingHarga.jualEcer - settingHarga.modalEcer);
+                profitGas += itemProfit;
+            } else if (item.kategori === "Aqua Warung") {
+                itemProfit = keluar * (settingHarga.jualAquaWarung - settingHarga.modalAquaWarung);
+                profitAqua += itemProfit;
+            } else if (item.kategori === "Aqua Ecer") {
+                itemProfit = keluar * (settingHarga.jualAquaEcer - settingHarga.modalAquaEcer);
+                profitAqua += itemProfit;
+            }
+
+            if (!chartDataMap[item.tanggal]) {
+                chartDataMap[item.tanggal] = { penjualanGas: 0, penjualanAqua: 0, keuntunganGas: 0, keuntunganAqua: 0 };
+            }
+            if (item.kategori === "Aqua Warung" || item.kategori === "Aqua Ecer") {
+                totalMasukAqua += masuk;
+                totalKeluarAqua += keluar;
+                chartDataMap[item.tanggal].penjualanAqua += keluar;
+                chartDataMap[item.tanggal].keuntunganAqua += itemProfit;
+            } else {
+                totalMasukGas += masuk;
+                totalKeluarGas += keluar;
+                chartDataMap[item.tanggal].penjualanGas += keluar;
+                chartDataMap[item.tanggal].keuntunganGas += itemProfit;
+            }
+        });
+
+        /* PAGINATION (Berdasarkan data yang dibalik agar baris terbaru tampil paling atas di tabel) */
+        const displayData = [...data].reverse(); 
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        const paginatedData = displayData.slice(start, end);
+
+        /* RENDER TABLE */
+        paginatedData.forEach(item => {
+            let labelKategori = item.kategori;
+            if (labelKategori === "Warung") labelKategori = "LPG Warung";
+            if (labelKategori === "Ecer") labelKategori = "LPG Ecer";
+
+            html += `
+                <tr>
+                    <td>${item.tanggal}</td>
+                    <td><span class="badge ${item.kategori.toLowerCase().replace(/\s+/g, '-')}">${labelKategori}</span></td>
+                    <td style="color: #34d399; font-weight: bold;">+${item.masuk}</td>
+                    <td style="color: #ef4444; font-weight: bold;">-${item.keluar}</td>
+                    <td style="font-weight: bold; color: #cbd5e1;">${item.sisaBerjalan}</td>
+                    <td><span class="badge-user">${item.oleh || item.username || 'admin'}</span></td> 
+                    <td>
+                        <div style="display: flex; gap: 6px; justify-content: center;">
+                            <button onclick="bukaModalEditStock(${item.id}, '${item.tanggal}', '${item.kategori}', ${item.masuk}, ${item.keluar})" style="background: #f59e0b; border:none; color:#fff; padding:4px 8px; border-radius:4px; cursor:pointer;" title="Edit">
+                                <i class="ri-edit-2-line"></i>
+                            </button>
+                            <button class="delete-btn" onclick="hapusData(${item.id})" style="background: #ef4444; border:none; color:#fff; padding:4px 8px; border-radius:4px; cursor:pointer;" title="Hapus">
+                                <i class="ri-delete-bin-line"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+
+        const totalStockGas = totalMasukGas - totalKeluarGas;
+        const totalStockAqua = totalMasukAqua - totalKeluarAqua;
+        const totalProfit = profitGas + profitAqua;
+
+        const dataTableEl = document.getElementById("dataTable");
+        if(dataTableEl) dataTableEl.innerHTML = html;
+
+        if(document.getElementById("totalStockGas")) document.getElementById("totalStockGas").innerText = totalStockGas;
+        if(document.getElementById("totalStockAqua")) document.getElementById("totalStockAqua").innerText = totalStockAqua;
+        if(document.getElementById("profitGas")) document.getElementById("profitGas").innerText = "Rp " + profitGas.toLocaleString("id-ID");
+        if(document.getElementById("profitAqua")) document.getElementById("profitAqua").innerText = "Rp " + profitAqua.toLocaleString("id-ID");
+        if(document.getElementById("totalProfit")) document.getElementById("totalProfit").innerText = "Rp " + totalProfit.toLocaleString("id-ID");
+
+        renderPagination(data.length);
+        
+        /* ==========================================
+            🔥 PROSES RENDER GRAFIK (KRONOLOGIS DARI LAMA KE BARU)
+        ========================================== */
+        const sortedDates = Object.keys(chartDataMap).sort();
+        const salesGasValues = sortedDates.map(date => chartDataMap[date].penjualanGas);
+        const salesAquaValues = sortedDates.map(date => chartDataMap[date].penjualanAqua);
+        const profitGasValues = sortedDates.map(date => chartDataMap[date].keuntunganGas);
+        const profitAquaValues = sortedDates.map(date => chartDataMap[date].keuntunganAqua);
+
+        const ctxSales = document.getElementById("salesChart");
+        const ctxProfit = document.getElementById("profitChart");
+
+        if (ctxSales && ctxProfit) {
+            if (salesChartInstance) salesChartInstance.destroy();
+            if (profitChartInstance) profitChartInstance.destroy();
+
+            // 1. Grafik Penjualan
+            salesChartInstance = new Chart(ctxSales, {
+                type: 'bar',
+                data: {
+                    labels: sortedDates,
+                    datasets: [
+                        {
+                            label: 'Gas Keluar (Tabung)',
+                            data: salesGasValues,
+                            backgroundColor: '#38bdf8',
+                            borderRadius: 6,
+                            maxBarThickness: 40
+                        },
+                        {
+                            label: 'Aqua Keluar (Galon)',
+                            data: salesAquaValues,
+                            backgroundColor: '#34d399',
+                            borderRadius: 6,
+                            maxBarThickness: 40
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#64748b' } } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#64748b' } },
+                        y: { 
+                            beginAtZero: true,
+                            grace: '5%',
+                            grid: { color: '#e2e8f0' }, 
+                            ticks: { color: '#64748b', precision: 0 } 
+                        }
+                    }
+                }
+            });
+
+            // 2. Grafik Keuntungan
+            profitChartInstance = new Chart(ctxProfit, {
+                type: 'line',
+                data: {
+                    labels: sortedDates,
+                    datasets: [
+                        {
+                            label: 'Profit Gas (Rp)',
+                            data: profitGasValues,
+                            borderColor: '#38bdf8',
+                            backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#38bdf8'
+                        },
+                        {
+                            label: 'Profit Aqua (Rp)',
+                            data: profitAquaValues,
+                            borderColor: '#34d399',
+                            backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#34d399'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#64748b' } } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#64748b' } },
+                        y: { 
+                            beginAtZero: true,
+                            grace: '5%',
+                            grid: { color: '#e2e8f0' }, 
+                            ticks: { 
+                                color: '#64748b',
+                                callback: function(value) { return 'Rp ' + value.toLocaleString('id-ID'); }
+                            } 
+                        }
+                    }
+                }
+            });
+        }
+    } catch (err) {
+        console.error("Gagal memuat data utama:", err);
+    }
+}
+
+/* =========================
+   PAGINATION
+========================= */
+function renderPagination(totalData){
+    const totalPages = Math.ceil(totalData / rowsPerPage);
+    let buttons = "";
+
+    for(let i = 1; i <= totalPages; i++){
+        buttons += `
+            <button class="page-btn ${currentPage === i ? "active-page" : ""}" onclick="changePage(${i})">
+                ${i}
+            </button>
+        `;
+    }
+    const paginationEl = document.getElementById("pagination");
+    if(paginationEl) paginationEl.innerHTML = buttons;
+}
+
+function changePage(page){
+    currentPage = page;
+    loadData();
+}
+
+/* =========================
+   DELETE DATA STOCK
+========================= */
+async function hapusData(id) {
+    if (typeof bukaUniversalConfirmModal === "function") {
+        bukaUniversalConfirmModal(
+            "Konfirmasi Hapus Data",
+            "Yakin hapus data transaksi stock ini, bro? 🗑️",
+            "ri-delete-bin-fill",
+            "rgba(239, 68, 68, 0.1)",
+            "#ef4444",
+            "Ya, Hapus!",
+            "var(--accent-red)",
+            async function() {
+                prosesHapusData(id);
+            }
+        );
+    } else {
+        const konfirmasi = confirm("Yakin hapus data transaksi stock ini, bro? 🗑️");
+        if (konfirmasi) {
+            prosesHapusData(id);
+        }
+    }
+}
+
+async function prosesHapusData(id) {
+    const olehUser = localStorage.getItem("username") || "admin";
+    try {
+        const res = await fetch(`/delete/${id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: olehUser })
+        });
+        
+        if (res.ok) {
+            showToast("Data berhasil dihapus! 🗑️", "success");
+            loadData();
+        } else {
+            showToast("Gagal hapus data bro 😭", "error");
+        }
+    } catch (err) {
+        console.error("Gagal hapus data:", err);
+        showToast("Error koneksi saat menghapus data.", "error");
+    }
+}
+
+/* =========================
+   EDIT DATA STOCK
+========================= */
+function bukaModalEditStock(id, tanggal, kategori, masuk, keluar) {
+    document.getElementById("editStockId").value = id;
+    document.getElementById("editStockTanggal").value = tanggal;
+    document.getElementById("editStockKategori").value = kategori;
+    document.getElementById("editStockMasuk").value = masuk;
+    document.getElementById("editStockKeluar").value = keluar;
+    
+    const modal = document.getElementById("editStockModal");
+    if (modal) modal.style.display = "flex";
+}
+
+function tutupModalEditStock() {
+    const modal = document.getElementById("editStockModal");
+    if (modal) modal.style.display = "none";
+}
+
+async function simpanEditStock() {
+    const id = document.getElementById("editStockId").value;
+    const tanggal = document.getElementById("editStockTanggal").value;
+    const kategori = document.getElementById("editStockKategori").value;
+    const masuk = document.getElementById("editStockMasuk").value;
+    const keluar = document.getElementById("editStockKeluar").value;
+    const username = localStorage.getItem("username") || "admin";
+
+    if (!tanggal || !kategori) {
+        showToast("Tanggal dan Kategori wajib diisi!", "warning");
+        return;
+    }
+
+    try {
+        const res = await fetch(`/edit/${id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tanggal, kategori, masuk, keluar, username })
+        });
+        
+        const result = await res.json();
+        if (res.ok && result.success) {
+            showToast("Data stock berhasil diperbarui! 📝", "success");
+            tutupModalEditStock();
+            loadData();
+        } else {
+            showToast("Gagal update stock: " + (result.message || "Unknown error"), "error");
+        }
+    } catch (err) {
+        console.error("Gagal update data:", err);
+        showToast("Error koneksi saat mengupdate data.", "error");
+    }
+}
+
+/* =========================
+   LOAD LOG AKTIVITAS 
+========================= */
+async function loadLogs() {
+    const tableBody = document.getElementById("logTableBody");
+    if (!tableBody) return;
+
+    try {
+        const res = await fetch("/api/logs");
+        if (!res.ok) throw new Error("Gagal menarik data log server");
+        
+        cachedLogs = await res.json();
+        renderLogs(cachedLogs);
+    } catch (err) {
+        console.error(err);
+        tableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444; padding:20px;">Gagal mengambil riwayat log 😭</td></tr>`;
+    }
+}
+
+function renderLogs(logs) {
+    const tableBody = document.getElementById("logTableBody");
+    if (!tableBody) return;
+
+    let html = "";
+
+    if (logs.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:20px;">Belum ada aktivitas tercatat.</td></tr>`;
+        return;
+    }
+
+    logs.forEach(log => {
+        let badgeColor = "background: #38bdf8; color: #000;"; 
+        const aksiSistem = (log.tipe_aksi || log.tipe || "").toUpperCase();
+
+        if (aksiSistem === "INPUT" || aksiSistem === "CREATE") {
+            badgeColor = "background: #10b981; color: #fff;"; 
+        } else if (aksiSistem === "HAPUS" || aksiSistem === "DELETE") {
+            badgeColor = "background: #ef4444; color: #fff;"; 
+        } else if (aksiSistem === "EDIT HARGA" || aksiSistem === "UPDATE HARGA") {
+            badgeColor = "background: #eab308; color: #000;"; 
+        }
+
+        html += `
+            <tr style="border-bottom: 1px solid var(--border-subtle);">
+                <td style="padding: 12px; color: #475569;">${log.waktu || "-"}</td>
+                <td style="padding: 12px; color: #0f172a; font-weight: bold;">${log.eksekutor || 'admin'}</td>
+                <td style="padding: 12px;">
+                    <span style="${badgeColor} padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">
+                        ${aksiSistem}
+                    </span>
+                </td>
+                <td style="padding: 12px; color: #475569; text-align: left;">${log.deskripsi || '-'}</td>
+            </tr>
+        `;
+    });
+
+    tableBody.innerHTML = html;
+}
+
+function filterLogs() {
+    const startDate = document.getElementById("logStartDate").value;
+    const endDate = document.getElementById("logEndDate").value;
+    const actionType = document.getElementById("logActionType").value;
+
+    let filtered = [...cachedLogs];
+
+    if (startDate) {
+        filtered = filtered.filter(log => {
+            if (!log.waktu) return false;
+            const logDate = log.waktu.split(" ")[0];
+            return logDate >= startDate;
+        });
+    }
+
+    if (endDate) {
+        filtered = filtered.filter(log => {
+            if (!log.waktu) return false;
+            const logDate = log.waktu.split(" ")[0];
+            return logDate <= endDate;
+        });
+    }
+
+    if (actionType && actionType !== "ALL") {
+        filtered = filtered.filter(log => {
+            const logAction = (log.tipe_aksi || "").toUpperCase();
+            return logAction === actionType.toUpperCase();
+        });
+    }
+
+    renderLogs(filtered);
+}
+
+function resetLogFilters() {
+    if (document.getElementById("logStartDate")) document.getElementById("logStartDate").value = "";
+    if (document.getElementById("logEndDate")) document.getElementById("logEndDate").value = "";
+    if (document.getElementById("logActionType")) document.getElementById("logActionType").value = "ALL";
+    renderLogs(cachedLogs);
+}
+
+/* =========================
+   SIMPAN SETTING HARGA
+========================= */
+async function simpanSetting(){
+    const modalWarung = Number(document.getElementById("modalWarung").value) || 16000;
+    const jualWarung = Number(document.getElementById("jualWarung").value) || 18000;
+    const modalEcer = Number(document.getElementById("modalEcer").value) || 16000;
+    const jualEcer = Number(document.getElementById("jualEcer").value) || 19000;
+    const modalAquaWarung = Number(document.getElementById("modalAquaWarung").value) || 14000;
+    const jualAquaWarung = Number(document.getElementById("jualAquaWarung").value) || 16000;
+    const modalAquaEcer = Number(document.getElementById("modalAquaEcer").value) || 15000;
+    const jualAquaEcer = Number(document.getElementById("jualAquaEcer").value) || 18000;
+    const namaAdmin = localStorage.getItem("username") || "admin";
+
+    const formatK = (num) => (num / 1000) + "k";
+    const deskripsiLog = `Mengubah harga -> LPG Warung [M:${formatK(settingHarga.modalWarung)}->${formatK(modalWarung)}, J:${formatK(settingHarga.jualWarung)}->${formatK(jualWarung)}] | LPG Ecer [M:${formatK(settingHarga.modalEcer)}->${formatK(modalEcer)}, J:${formatK(settingHarga.jualEcer)}->${formatK(jualEcer)}] | Aqua Warung [M:${formatK(settingHarga.modalAquaWarung)}->${formatK(modalAquaWarung)}, J:${formatK(settingHarga.jualAquaWarung)}->${formatK(jualAquaWarung)}] | Aqua Ecer [M:${formatK(settingHarga.modalAquaEcer)}->${formatK(modalAquaEcer)}, J:${formatK(settingHarga.jualAquaEcer)}->${formatK(jualAquaEcer)}]`;
+
+    try {
+        const res = await fetch("/api/setting-harga", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                modalWarung, jualWarung, modalEcer, jualEcer, 
+                modalAquaWarung, jualAquaWarung, modalAquaEcer, jualAquaEcer, 
+                oleh: namaAdmin, deskripsi: deskripsiLog 
+            })
+        });
+
+        const result = await res.json();
+
+        if (res.ok && result.success) {
+            settingHarga = { 
+                modalWarung, jualWarung, modalEcer, jualEcer,
+                modalAquaWarung, jualAquaWarung, modalAquaEcer, jualAquaEcer
+            };
+            showToast("Harga berhasil diubah dan disimpan permanen! 💰", "success");
+            loadData(); 
+        } else {
+            showToast("Gagal menyimpan harga: " + (result.message || "Terjadi kesalahan."), "error");
+        }
+    } catch (err) {
+        console.error(err);
+        showToast("Error koneksi ke server saat menyimpan harga 😭", "error");
+    }
+}
+
+/* =========================
+   DOWNLOAD EXCEL (SECURED)
+========================= */
+async function downloadExcel(){
+    const role = localStorage.getItem("role");
+    if(role !== "admin" && role !== "superadmin") {
+        showToast("Akses ditolak! Fitur ini cuma buat admin.", "error");
+        return;
+    }
+
+    const res = await fetch("/data");
+    const data = await res.json();
+    data.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+
+    let csv = `Tanggal,Kategori,Masuk,Keluar,Sisa Stok,Oleh\n`;
+    let runningGas = 0;
+    let runningAqua = 0;
+    data.forEach(item => {
+        const masuk = Number(item.masuk) || 0;
+        const keluar = Number(item.keluar) || 0;
+        let currentRunning = 0;
+        if (item.kategori === "Aqua Warung" || item.kategori === "Aqua Ecer") {
+            runningAqua += (masuk - keluar);
+            currentRunning = runningAqua;
+        } else {
+            runningGas += (masuk - keluar);
+            currentRunning = runningGas;
+        }
+        csv += `${item.tanggal},${item.kategori},${masuk},${keluar},${currentRunning},${item.oleh || item.username || 'admin'}\n`;
+    });
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `rekap-adequa-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+}
+
+/* ==========================================
+   UTILITAS IMAGE TO BASE64 (UNTUK LOGO PDF)
+========================================== */
+function getBase64Image(src) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = src;
+        img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL("image/png"));
+        };
+        img.onerror = (err) => reject(err);
+    });
+}
+
+/* =========================
+   DOWNLOAD PDF (SECURED)
+========================= */
+async function downloadPDF(){
+    const role = localStorage.getItem("role");
+    if(role !== "admin" && role !== "superadmin") {
+        showToast("Akses ditolak! Fitur ini cuma buat admin. ⛔", "error");
+        return;
+    }
+
+    try {
+        const startDate = document.getElementById("startDate").value;
+        const endDate = document.getElementById("endDate").value;
+
+        if(!startDate || !endDate){
+            showToast("PILIH TANGGAL PERIODE DULU 😎", "warning");
+            return;
+        }
+
+        const res = await fetch("/data");
+        let data = await res.json();
+        
+        // Urutkan kronologis dahulu sebelum difilter untuk hitungan akumulasi stock yang valid
+        data.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+
+        let totalMasuk = 0;
+        let totalKeluar = 0;
+        let masukGas = 0;
+        let keluarGas = 0;
+        let masukAqua = 0;
+        let keluarAqua = 0;
+        let profitGas = 0;
+        let profitAqua = 0;
+        let runningGas = 0;
+        let runningAqua = 0;
+
+        const tableData = [];
+
+        data.forEach(item => {
+            const masuk = Number(item.masuk) || 0;
+            const keluar = Number(item.keluar) || 0;
+            
+            let currentRunning = 0;
+            if (item.kategori === "Aqua Warung" || item.kategori === "Aqua Ecer") {
+                runningAqua += (masuk - keluar);
+                currentRunning = runningAqua;
+            } else {
+                runningGas += (masuk - keluar);
+                currentRunning = runningGas;
+            }
+
+            // Filter data yang masuk ke range tanggal pilihan user
+            if (item.tanggal >= startDate && item.tanggal <= endDate) {
+                totalMasuk += masuk;
+                totalKeluar += keluar;
+
+                if (item.kategori === "Aqua Warung" || item.kategori === "Aqua Ecer") {
+                    masukAqua += masuk;
+                    keluarAqua += keluar;
+                } else {
+                    masukGas += masuk;
+                    keluarGas += keluar;
+                }
+
+                let profit = 0;
+                if (item.kategori === "LPG Warung" || item.kategori === "Warung") {
+                    profit = keluar * (settingHarga.jualWarung - settingHarga.modalWarung);
+                    profitGas += profit;
+                } else if (item.kategori === "LPG Ecer" || item.kategori === "Ecer") {
+                    profit = keluar * (settingHarga.jualEcer - settingHarga.modalEcer);
+                    profitGas += profit;
+                } else if (item.kategori === "Aqua Warung") {
+                    profit = keluar * (settingHarga.jualAquaWarung - settingHarga.modalAquaWarung);
+                    profitAqua += profit;
+                } else if (item.kategori === "Aqua Ecer") {
+                    profit = keluar * (settingHarga.jualAquaEcer - settingHarga.modalAquaEcer);
+                    profitAqua += profit;
+                }
+                
+                let labelKategori = item.kategori;
+                if (labelKategori === "Warung") labelKategori = "LPG Warung";
+                if (labelKategori === "Ecer") labelKategori = "LPG Ecer";
+
+                tableData.push([
+                    item.tanggal, 
+                    labelKategori, 
+                    masuk, 
+                    keluar, 
+                    currentRunning, 
+                    item.oleh || item.username || 'admin', 
+                    `Rp ${profit.toLocaleString("id-ID")}`
+                ]);
+            }
+        });
+
+        if(tableData.length === 0){
+            showToast("Tidak ada data transaksi di periode tanggal tersebut 😭", "error");
+            return;
+        }
+
+        const totalStock = totalMasuk - totalKeluar;
+        const totalProfit = profitGas + profitAqua;
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+        let logo = "";
+        try { logo = await getBase64Image("ADEQUA.png"); } catch(e) { console.error(e); }
+
+        doc.setFillColor(255, 255, 255);
+        doc.rect(0, 0, 210, 297, "F");
+        
+        if(logo) doc.addImage(logo, "PNG", 15, 10, 180, 38);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(18);
+        doc.setTextColor(30, 41, 59);
+        doc.text("LAPORAN REKAPITULASI STOCK & PROFIT", 105, 58, { align: "center" });
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Periode : ${startDate} s/d ${endDate}`, 105, 64, { align: "center" });
+
+        // Kotak Ringkasan Laporan
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(203, 213, 225);
+        doc.roundedRect(14, 72, 182, 30, 3, 3, "FD");
+
+        // Kolom 1 (Stock)
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(71, 85, 105);
+        doc.text("Stock Gas", 18, 81);
+        
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(16, 185, 129);
+        doc.text(`Masuk : +${masukGas}`, 18, 88);
+        doc.setTextColor(239, 68, 68);
+        doc.text(`Keluar : -${keluarGas}`, 18, 95);
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(71, 85, 105);
+        doc.text("Stock Aqua", 50, 81);
+        
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(16, 185, 129);
+        doc.text(`Masuk : +${masukAqua}`, 50, 88);
+        doc.setTextColor(239, 68, 68);
+        doc.text(`Keluar : -${keluarAqua}`, 50, 95);
+
+        // Kolom 2 (Total Profit)
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(71, 85, 105);
+        doc.text("Total Profit Bersih", 88, 81);
+        
+        doc.setFontSize(18);
+        doc.setTextColor(16, 185, 129);
+        doc.text(`Rp ${totalProfit.toLocaleString("id-ID")}`, 88, 92);
+
+        // Kolom 3 (Rincian Profit)
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(100, 116, 139);
+        doc.text("Profit Gas", 145, 84);
+        
+        doc.setTextColor(56, 189, 248);
+        doc.text(`: Rp ${profitGas.toLocaleString("id-ID")}`, 165, 84);
+
+        doc.setTextColor(100, 116, 139);
+        doc.text("Profit Aqua", 145, 92);
+        
+        doc.setTextColor(16, 185, 129);
+        doc.text(`: Rp ${profitAqua.toLocaleString("id-ID")}`, 165, 92);
+
+        // Tambah baris total di paling bawah tabel PDF
+        tableData.push(["TOTAL GAS", "-", `+${masukGas}`, `-${keluarGas}`, `Sisa Gas: ${masukGas - keluarGas}`, "-", `Rp ${profitGas.toLocaleString("id-ID")}`]);
+        tableData.push(["TOTAL AQUA", "-", `+${masukAqua}`, `-${keluarAqua}`, `Sisa Aqua: ${masukAqua - keluarAqua}`, "-", `Rp ${profitAqua.toLocaleString("id-ID")}`]);
+        tableData.push(["GRAND TOTAL", "-", `+${totalMasuk}`, `-${totalKeluar}`, `Sisa Total: ${totalStock}`, "-", `Rp ${totalProfit.toLocaleString("id-ID")}`]);
+
+        doc.autoTable({
+            startY: 112,
+            head: [["Tanggal", "Kategori", "Masuk", "Keluar", "Sisa Stok", "Oleh", "Profit"]],
+            body: tableData,
+            theme: "striped",
+            styles: {
+                font: "helvetica",
+                fontSize: 9,
+                cellPadding: 4,
+                textColor: [51, 65, 85],
+                halign: 'center',
+                valign: 'middle'
+            },
+            headStyles: { 
+                fillColor: [30, 41, 59], 
+                textColor: [255, 255, 255], 
+                fontStyle: 'bold',
+                halign: "center" 
+            },
+            alternateRowStyles: {
+                fillColor: [248, 250, 252]
+            },
+            didParseCell: function(data) {
+                const isGasRow = data.row.index === tableData.length - 3;
+                const isAquaRow = data.row.index === tableData.length - 2;
+                const isGrandTotalRow = data.row.index === tableData.length - 1;
+
+                if (isGasRow || isAquaRow || isGrandTotalRow) {
+                    data.cell.styles.fontStyle = "bold";
+                    data.cell.styles.fillColor = isGrandTotalRow ? [203, 213, 225] : [226, 232, 240];
+                    data.cell.styles.textColor = [15, 23, 42];
+                } else if (data.section === 'body') {
+                    if (data.column.index === 2) { // Masuk
+                        data.cell.styles.textColor = [16, 185, 129];
+                        data.cell.styles.fontStyle = "bold";
+                    }
+                    if (data.column.index === 3) { // Keluar
+                        data.cell.styles.textColor = [239, 68, 68];
+                        data.cell.styles.fontStyle = "bold";
+                    }
+                    if (data.column.index === 6) { // Profit
+                        data.cell.styles.textColor = [5, 150, 105];
+                        data.cell.styles.fontStyle = "bold";
+                    }
+                }
+            }
+        });
+
+        doc.setFontSize(10);
+        doc.setTextColor(120);
+        doc.text("Generated by ADEQUA Management System", 14, 285);
+
+        doc.save(`rekap-${startDate}-${endDate}.pdf`);
+        showToast("Laporan PDF berhasil didownload! 📄", "success");
+    } catch(err){
+        console.error(err);
+        showToast("PDF Error 😭", "error");
+    }
+}
+
+/* ==========================================
+   LOGOUT FUNCTION
+========================================== */
+function logout() {
+    if (typeof bukaModalLogout === "function") {
+        bukaModalLogout();
+    } else {
+        const konfirmasi = confirm("Yakin mau logout dari sistem, bro? 🔓");
+        if (konfirmasi) {
+            localStorage.clear(); 
+            sessionStorage.clear();
+            window.location.href = window.location.origin;
+        }
+    }
+}
+
+/* ==========================================
+   BUAT AKUN BARU
+========================================== */
+async function createAccount() {
+    const username = document.getElementById("regUsername").value.trim();
+    const password = document.getElementById("regPassword").value.trim();
+    const role = document.getElementById("regRole").value;
+
+    if (!username || !password) {
+        showToast("Username dan Password gak boleh kosong bro! ❌", "warning");
+        return;
+    }
+
+    try {
+        const res = await fetch("/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password, role, requesterRole: localStorage.getItem("role") })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(`Akun dengan Akses [${role.toUpperCase()}] berhasil dibuat! 🎉`, "success");
+            document.getElementById("regUsername").value = "";
+            document.getElementById("regPassword").value = "";
+            loadRegisteredUsers();
+        } else {
+            showToast("Gagal buat akun: " + (data.message || "Terjadi kesalahan"), "error");
+        }
+    } catch (err) {
+        console.error(err);
+        showToast("Error koneksi ke server 😭", "error");
+    }
+}
+
+/* ==========================================
+   LOAD DAFTAR USER
+========================================== */
+async function loadRegisteredUsers() {
+    const tableBody = document.getElementById("userTableBody");
+    if (!tableBody) return;
+    if (localStorage.getItem("role") === "user") return;
+
+    try {
+        const res = await fetch("/api/users");
+        const users = await res.json();
+
+        const currentRole = localStorage.getItem("role") || "user";
+        let html = "";
+        users.forEach((user) => {
+            const safeUsername = user.username.replace(/['"]/g, "");
+            const safeRole = user.role.toLowerCase();
+            
+            // Default styling untuk role user/admin
+            let roleBadgeBg = user.role === 'admin' ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)';
+            let roleBadgeColor = user.role === 'admin' ? '#f87171' : '#34d399';
+            let roleBadgeBorder = user.role === 'admin' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)';
+
+            // Styling spesial untuk superadmin
+            if (user.role === 'superadmin') {
+                roleBadgeBg = 'rgba(139,92,246,0.15)';
+                roleBadgeColor = '#c084fc';
+                roleBadgeBorder = 'rgba(139,92,246,0.3)';
+            }
+
+            let actionButtons = "";
+            // Hanya Super Admin yang bisa edit superadmin/admin. Admin biasa hanya bisa edit user biasa.
+            if (currentRole === "superadmin" || (currentRole === "admin" && user.role === "user")) {
+                actionButtons = `
+                    <button onclick="openEditModal('${user.id}', '${safeUsername}', '${safeRole}')" style="background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; font-family: 'Inter', sans-serif;">
+                        <i class='ri-edit-line'></i> Edit
+                    </button>
+                    <button onclick="resetUserPin('${user.id}', '${safeUsername}')" style="background: rgba(139,92,246,0.12); color: #a78bfa; border: 1px solid rgba(139,92,246,0.2); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; font-family: 'Inter', sans-serif;">
+                        <i class='ri-key-2-line'></i> Reset PIN
+                    </button>
+                    <button onclick="deleteUser('${user.id}', '${safeUsername}')" style="background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.15); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; font-family: 'Inter', sans-serif;">
+                        <i class='ri-delete-bin-line'></i> Hapus
+                    </button>
+                `;
+            } else {
+                actionButtons = `<span style="color: var(--text-muted); font-size: 11px; font-style: italic; padding: 6px 0;">Akses Terbatas</span>`;
+            }
+
+            html += `
+                <tr>
+                    <td>${user.id}</td>
+                    <td style="font-weight: 600;">${user.username}</td>
+                    <td>
+                        <span style="background: ${roleBadgeBg}; color: ${roleBadgeColor}; border: 1px solid ${roleBadgeBorder}; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.3px;">
+                            ${user.role.toUpperCase()}
+                        </span>
+                    </td>
+                    <td style="display: flex; gap: 6px; flex-wrap: wrap;">
+                        ${actionButtons}
+                    </td>
+                </tr>
+            `;
+        });
+        tableBody.innerHTML = html;
+    } catch (err) {
+        console.error("Gagal memuat list user:", err);
+    }
+}
+
+/* ==========================================
+   MODAL EDIT USER SINKRONISASI
+========================================== */
+function openEditModal(id, username, role) {
+    const modal = document.getElementById("editUserModal");
+    if (modal) {
+        document.getElementById("editUserId").value = id;
+        document.getElementById("editUsername").value = username;
+        
+        const roleSelect = document.getElementById("editRole");
+        if (roleSelect) {
+            // Check if superadmin option exists
+            let hasSuperadminOption = false;
+            for (let i = 0; i < roleSelect.options.length; i++) {
+                if (roleSelect.options[i].value === "superadmin") {
+                    hasSuperadminOption = true;
+                    break;
+                }
+            }
+            
+            if (role === "superadmin") {
+                if (!hasSuperadminOption) {
+                    const opt = document.createElement("option");
+                    opt.value = "superadmin";
+                    opt.text = "superadmin";
+                    roleSelect.add(opt);
+                }
+                roleSelect.value = "superadmin";
+                roleSelect.disabled = true; // disable changing role for superadmin
+            } else {
+                // Remove superadmin option if it exists
+                for (let i = 0; i < roleSelect.options.length; i++) {
+                    if (roleSelect.options[i].value === "superadmin") {
+                        roleSelect.remove(i);
+                        break;
+                    }
+                }
+                roleSelect.value = role;
+                roleSelect.disabled = false;
+            }
+        }
+
+        document.getElementById("editPassword").value = ""; 
+        modal.style.display = "flex";
+    }
+}
+
+function closeEditModal() {
+    const modal = document.getElementById("editUserModal");
+    if (modal) modal.style.display = "none";
+    
+    // Re-enable role dropdown just in case
+    const roleSelect = document.getElementById("editRole");
+    if (roleSelect) roleSelect.disabled = false;
+}
+
+async function simpanPerubahanUser() {
+    const id = document.getElementById("editUserId").value;
+    const username = document.getElementById("editUsername").value.trim();
+    const password = document.getElementById("editPassword").value.trim();
+    const role = document.getElementById("editRole").value;
+
+    if (!username) {
+        showToast("Username tidak boleh kosong!", "warning");
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/users/update/${id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password, role, requesterRole: localStorage.getItem("role") })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast("Data user berhasil diperbarui! 📝", "success");
+            closeEditModal();
+            loadRegisteredUsers();
+        } else {
+            showToast("Gagal update user: " + (data.message || "Terjadi kesalahan"), "error");
+        }
+    } catch (err) {
+        console.error(err);
+        showToast("Error koneksi server saat menyimpan perubahan user", "error");
+    }
+}
+
+/* ==========================================
+   RESET PIN USER
+========================================== */
+async function resetUserPin(id, username) {
+    if (typeof bukaUniversalConfirmModal === "function") {
+        bukaUniversalConfirmModal(
+            "Konfirmasi Reset PIN",
+            `Reset PIN authenticator user <b>[ ${username} ]</b>?<br><br><span style='font-size:12px; color:var(--text-muted);'>User harus set PIN baru saat login berikutnya.</span>`,
+            "ri-key-fill",
+            "rgba(245,158,11,0.1)",
+            "#f59e0b",
+            "Ya, Reset PIN",
+            "var(--accent-blue)",
+            async function() {
+                prosesResetUserPin(id, username);
+            }
+        );
+    } else {
+        const konfirmasi = confirm(`Reset PIN authenticator user [ ${username} ]? User harus set PIN baru saat login berikutnya.`);
+        if (konfirmasi) {
+            prosesResetUserPin(id, username);
+        }
+    }
+}
+
+async function prosesResetUserPin(id, username) {
+    try {
+        const adminUser = localStorage.getItem("username") || "admin";
+        const res = await fetch(`/api/reset-pin/${id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: adminUser, requesterRole: localStorage.getItem("role") })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(`PIN user ${username} berhasil direset! 🔑`, "success");
+            loadRegisteredUsers(); 
+        } else {
+            showToast("Gagal reset PIN: " + (data.message || "Unknown error"), "error");
+        }
+    } catch (err) {
+        console.error(err);
+        showToast("Error koneksi ke server", "error");
+    }
+}
+
+/* ==========================================
+   HAPUS AKUN PROFILE USER
+========================================== */
+async function deleteUser(id, username) {
+    if (typeof bukaUniversalConfirmModal === "function") {
+        bukaUniversalConfirmModal(
+            "Hapus Akun Permanen",
+            `Lu yakin mau menghapus akun <b>[ ${username} ]</b> secara permanen?<br><br><span style='font-size:12px; color:var(--accent-red); font-weight:600;'>Aksi ini tidak bisa dibatalkan!</span>`,
+            "ri-user-unfollow-fill",
+            "rgba(239, 68, 68, 0.1)",
+            "#ef4444",
+            "Ya, Hapus Akun!",
+            "var(--accent-red)",
+            async function() {
+                prosesDeleteUser(id, username);
+            }
+        );
+    } else {
+        const konfirmasi = confirm(`Lu yakin mau menghapus akun [ ${username} ] secara permanen? 🤔`);
+        if (konfirmasi) {
+            prosesDeleteUser(id, username);
+        }
+    }
+}
+
+async function prosesDeleteUser(id, username) {
+    try {
+        const res = await fetch(`/api/users/delete/${id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ requesterRole: localStorage.getItem("role") })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(`Akun ${username} berhasil dihapus permanen! 🗑️`, "success");
+            loadRegisteredUsers();
+        } else {
+            showToast("Gagal hapus akun: " + (data.message || "Unknown error"), "error");
+        }
+    } catch (err) {
+        console.error(err);
+        showToast("Error koneksi ke server", "error");
+    }
+}
+
+/* ==========================================
+   FITUR OTO-PROTEKSI AKSES & PROFILE DISPLAY
+========================================== */
+function jalankanProteksiAkses() {
+    const currentUsername = localStorage.getItem("username");
+    const role = localStorage.getItem("role") || "user"; 
+    const token = localStorage.getItem("token");
+
+    if (!currentUsername || !token) {
+        showToast("Login dulu bro! Lu gak bisa main masuk aja ⛔", "error");
+        window.location.href = window.location.origin; 
+        return;
+    }
+
+    const userDisplayEl = document.getElementById("userLoginDisplay");
+    const roleDisplayEl = document.getElementById("roleLoginDisplay");
+    
+    if (userDisplayEl) userDisplayEl.innerText = currentUsername;
+    if (roleDisplayEl) {
+        roleDisplayEl.innerText = role.toUpperCase();
+        roleDisplayEl.className = `role-badge ${role}`;
+    }
+
+    const menus = document.querySelectorAll(".menu-item");
+    const btnExcel = document.querySelector("button[onclick*='downloadExcel']");
+    const btnPDF = document.querySelector("button[onclick*='downloadPDF']");
+
+    const logoutBtn = document.querySelector(".logout-item");
+    if (logoutBtn) {
+        logoutBtn.style.setProperty('display', 'flex', 'important');
+        logoutBtn.style.setProperty('pointer-events', 'auto', 'important');
+    }
+
+    if (role === "user") {
+        console.log("⚠️ Akses Terbatas Aktif: User Mode");
+        menus.forEach(menu => {
+            const attr = menu.getAttribute("onclick") || "";
+            if (attr.includes("settingPage") || attr.includes("logsPage")) {
+                menu.style.setProperty('display', 'none', 'important');
+            } else if (!attr.includes("logout")) {
+                menu.style.setProperty('display', 'flex', 'important');
+            }
+        });
+        
+        if (btnExcel) btnExcel.style.setProperty('display', 'none', 'important');
+        if (btnPDF) btnPDF.style.setProperty('display', 'none', 'important');
+    } else {
+        if (role === "superadmin") {
+            console.log("🚀 Akses Penuh: Super Admin Mode");
+        } else {
+            console.log("👑 Akses Menengah: Admin Mode");
+            // Sembunyikan opsi role 'admin' di form register jika bukan superadmin
+            const regRoleSelect = document.getElementById("regRole");
+            if (regRoleSelect) {
+                const adminOption = regRoleSelect.querySelector('option[value="admin"]');
+                if (adminOption) adminOption.style.display = 'none';
+                regRoleSelect.value = "user"; // paksa user
+            }
+        }
+
+        menus.forEach(menu => {
+            menu.style.setProperty('display', 'flex', 'important');
+        });
+        if (btnExcel) btnExcel.style.setProperty('display', 'block', 'important');
+        if (btnPDF) btnPDF.style.setProperty('display', 'block', 'important');
+    }
+}
+
+/* =========================================================
+   LOGO UPLOAD LOGIC
+========================================================= */
+document.addEventListener("DOMContentLoaded", () => {
+    const logoInput = document.getElementById("logoUploadInput");
+    const logoPreview = document.getElementById("logoPreview");
+
+    if (logoInput && logoPreview) {
+        logoInput.addEventListener("change", function(e) {
+            const file = e.target.files[0];
+            if (!file) {
+                logoPreview.src = "ADEQUA-LOGO.png"; // Reset to current logo
+                return;
+            }
+
+            // Validasi ukuran (Maks 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                showToast("Ukuran file terlalu besar! Maksimal 5MB.", "error");
+                logoInput.value = ""; // Reset
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                logoPreview.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+});
+
+async function uploadNewLogo() {
+    const logoInput = document.getElementById("logoUploadInput");
+    const btn = document.getElementById("btnSaveLogo");
+    
+    if (!logoInput || !logoInput.files || logoInput.files.length === 0) {
+        showToast("Pilih file gambar logo terlebih dahulu!", "error");
+        return;
+    }
+
+    const file = logoInput.files[0];
+    const reader = new FileReader();
+
+    // Disable button to prevent double submit
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="ri-loader-4-line spin"></i> <span>Mengunggah...</span>`;
+    }
+
+    reader.onload = async function(event) {
+        const base64String = event.target.result;
+
+        try {
+            const response = await fetch("/api/upload-logo", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ logoBase64: base64String })
+            });
+
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+                showToast("Logo berhasil diperbarui! Memuat ulang...", "success");
+                
+                // Refresh page after short delay to apply new logo
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showToast(data.error || "Gagal mengunggah logo.", "error");
+                resetUploadButton(btn);
+            }
+        } catch (error) {
+            console.error("Error uploading logo:", error);
+            showToast("Terjadi kesalahan jaringan saat mengunggah logo.", "error");
+            resetUploadButton(btn);
+        }
+    };
+
+    reader.onerror = function() {
+        showToast("Gagal membaca file gambar.", "error");
+        resetUploadButton(btn);
+    };
+
+    reader.readAsDataURL(file);
+}
+
+function resetUploadButton(btn) {
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="ri-upload-cloud-2-line"></i> <span>Unggah & Simpan Logo</span>`;
+    }
+}
+
+/* ==========================================
+   GANTI PASSWORD SENDIRI (PROFIL SAYA)
+========================================== */
+function bukaModalGantiPassword() {
+    const modal = document.getElementById("gantiPasswordModal");
+    if (modal) {
+        document.getElementById("oldPasswordInput").value = "";
+        document.getElementById("newPasswordInput").value = "";
+        modal.style.display = "flex";
+    }
+}
+
+function tutupModalGantiPassword() {
+    const modal = document.getElementById("gantiPasswordModal");
+    if (modal) modal.style.display = "none";
+}
+
+async function simpanPasswordBaru() {
+    const oldPassword = document.getElementById("oldPasswordInput").value;
+    const newPassword = document.getElementById("newPasswordInput").value;
+    const username = localStorage.getItem("username");
+
+    if (!oldPassword || !newPassword) {
+        showToast("Password lama dan baru wajib diisi!", "warning");
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/users/change-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, oldPassword, newPassword })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast("Password berhasil diubah! 🔐", "success");
+            tutupModalGantiPassword();
+        } else {
+            showToast("Gagal ubah password: " + (data.message || "Unknown error"), "error");
+        }
+    } catch (err) {
+        console.error(err);
+        showToast("Error koneksi ke server", "error");
+    }
+}

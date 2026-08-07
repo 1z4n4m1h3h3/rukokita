@@ -1,0 +1,455 @@
+/* =========================
+   PREMIUM LOGIN — ADEQUA
+========================= */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: var(--app-font);
+}
+
+body {
+    background: var(--bg-primary);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* =========================
+   SPLIT LAYOUT
+========================= */
+.login-split-wrapper {
+    display: flex;
+    width: 100%;
+    max-width: 1100px;
+    background: var(--bg-card);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    position: relative;
+    z-index: 10;
+}
+
+.login-showcase {
+    flex: 1.2;
+    position: relative;
+    background: var(--bg-primary);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px;
+}
+
+.showcase-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+}
+
+.showcase-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, rgba(10, 15, 29, 0.8), rgba(10, 15, 29, 0.2));
+    z-index: 2;
+}
+
+.showcase-content {
+    position: relative;
+    z-index: 3;
+}
+
+.showcase-title {
+    font-family: var(--heading-font);
+    font-size: 48px;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.1;
+    margin-bottom: 20px;
+}
+
+.showcase-subtitle {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.6;
+    max-width: 400px;
+}
+
+/* =========================
+   LOGIN CONTAINER
+========================= */
+.login-container {
+    flex: 1;
+    background: var(--bg-card-solid);
+    padding: 60px 50px;
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* =========================
+   STEP TRANSITIONS
+========================= */
+.login-step {
+    display: none;
+    animation: stepFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.login-step.active {
+    display: block;
+}
+
+@keyframes stepFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =========================
+   LOGO IMAGE
+========================= */
+.login-header {
+    text-align: left;
+    margin-bottom: 30px;
+}
+
+.login-header .app-logo {
+    width: 100%;
+    max-width: 180px;
+    height: auto;
+    object-fit: contain;
+    margin-bottom: 24px;
+    display: block;
+}
+
+.pin-icon-box {
+    width: 64px;
+    height: 64px;
+    background: var(--gradient-purple);
+    border-radius: 18px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-glow-blue);
+}
+
+.pin-icon-box.set-pin {
+    background: var(--gradient-green);
+    box-shadow: var(--shadow-glow-green);
+}
+
+.pin-icon-box i {
+    color: #fff;
+    font-size: 28px;
+}
+
+/* =========================
+   TYPOGRAPHY
+========================= */
+h2 {
+    font-family: var(--heading-font);
+    color: var(--text-primary);
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+}
+
+.subtitle {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 28px;
+    font-weight: 400;
+}
+
+.pin-user-label {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-top: -18px;
+    margin-bottom: 24px;
+}
+
+.pin-user-label strong {
+    color: var(--accent-blue);
+}
+
+/* =========================
+   STEP BACK BUTTON
+========================= */
+.step-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: 20px;
+    transition: var(--transition);
+    padding: 6px 10px;
+    border-radius: 8px;
+    margin-left: -10px;
+}
+
+.step-back:hover {
+    color: var(--text-primary);
+    background: var(--bg-input);
+}
+
+.step-back i {
+    font-size: 18px;
+}
+
+/* =========================
+   INPUT GROUPS
+========================= */
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon {
+    position: absolute;
+    left: 16px;
+    color: var(--text-muted);
+    font-size: 18px;
+    transition: color 0.3s;
+    z-index: 1;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 16px 16px 16px 48px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-medium);
+    border-radius: 12px;
+    font-size: 14px;
+    color: var(--text-primary);
+    outline: none;
+    transition: var(--transition);
+}
+
+.input-group input::placeholder {
+    color: var(--text-muted);
+}
+
+.input-group input:focus {
+    border-color: var(--accent-blue);
+    background: var(--bg-card);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.input-group input:focus ~ .input-icon,
+.input-wrapper:focus-within .input-icon {
+    color: var(--accent-blue);
+}
+
+/* =========================
+   PIN INPUT BOXES
+========================= */
+.pin-input-container {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 30px;
+}
+
+.pin-box {
+    width: 50px;
+    height: 60px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    background: var(--bg-input);
+    border: 1px solid var(--border-medium);
+    border-radius: 14px;
+    outline: none;
+    transition: var(--transition);
+    font-family: 'Inter', monospace;
+    caret-color: var(--accent-blue);
+}
+
+.pin-box:focus {
+    border-color: var(--accent-blue);
+    background: var(--bg-card);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+    transform: translateY(-2px);
+}
+
+#step3 .pin-box:focus {
+    border-color: var(--accent-green);
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+}
+
+.pin-box.filled {
+    border-color: var(--border-subtle);
+}
+
+.pin-separator {
+    color: var(--text-muted);
+    font-size: 18px;
+    font-weight: 300;
+    user-select: none;
+}
+
+/* =========================
+   BUTTONS
+========================= */
+.btn-login {
+    width: 100%;
+    padding: 16px;
+    background: var(--gradient-blue);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-login:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow-blue);
+}
+
+.btn-login:active {
+    transform: translateY(0);
+}
+
+.btn-set-pin {
+    background: var(--gradient-green);
+}
+
+.btn-set-pin:hover {
+    box-shadow: var(--shadow-glow-green);
+}
+
+.btn-text, .btn-loader {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* =========================
+   SPINNER
+========================= */
+.spin {
+    animation: spinRotate 1s linear infinite;
+}
+
+@keyframes spinRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* =========================
+   ALERT BOX
+========================= */
+.alert-box {
+    padding: 14px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-align: left;
+    animation: alertShake 0.4s ease;
+}
+
+.alert-error {
+    color: #b91c1c;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+}
+
+@keyframes alertShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+}
+
+/* =========================
+   FOOTER
+========================= */
+.footer-brand {
+    margin-top: 40px;
+    color: var(--text-muted);
+    font-size: 12px;
+    letter-spacing: 0.3px;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+@media (max-width: 768px) {
+    .login-showcase {
+        display: none; /* Hide image on mobile */
+    }
+    
+    .login-split-wrapper {
+        max-width: 420px;
+    }
+    
+    .login-container {
+        padding: 40px 30px;
+    }
+
+    .pin-box {
+        width: 42px;
+        height: 52px;
+        font-size: 20px;
+    }
+
+    h2 {
+        font-size: 24px;
+    }
+}

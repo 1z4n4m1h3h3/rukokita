@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pangkalan GAS LPG & Aqua ADEQUA</title>
+    <meta name="description" content="Dashboard monitoring stock dan penjualan Pangkalan Gas LPG & Aqua Galon ADEQUA">
+
+    <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="theme.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="theme-manager.js"></script>
+    
+    <!-- PWA Setup -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ADEQUA">
+    <link rel="apple-touch-icon" href="ADEQUA.png">
+</head>
+
+<body>
+
+    <!-- Animated Background Orbs -->
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="bg-orb orb-3"></div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Mobile Overlay -->
+    <div id="mobileOverlay" class="sidebar-overlay" onclick="toggleMobileMenu()"></div>
+
+    <div class="sidebar" id="sidebar">
+        <div class="logo">
+            <img src="ADEQUA-LOGO.png" alt="Logo" class="app-logo">
+            <div class="logo-text">
+                <h2>Welcome</h2>
+                <h3>Pangkalan ADEQUA</h3>
+                <p>Stock Management System</p>
+            </div>
+        </div>
+
+        <div class="profile-info-box">
+            <p>Logged in as</p>
+            <h4 id="userLoginDisplay">-</h4>
+            <span id="roleLoginDisplay" class="role-badge admin">-</span>
+            <button onclick="bukaModalGantiPassword()" style="margin-top: 12px; background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: var(--app-font); transition: all 0.2s;">
+                <i class="ri-user-settings-fill"></i> Ganti Password
+            </button>
+        </div>
+
+        <div class="menu">
+            <div class="menu-item active" onclick="showPage('dashboardPage')">
+                <i class="ri-dashboard-3-fill"></i> Dashboard
+            </div>
+            <div class="menu-item" onclick="showPage('inputPage')">
+                <i class="ri-file-add-fill"></i> Input Stock
+            </div>
+            <div class="menu-item" onclick="showPage('settingPage')">
+                <i class="ri-settings-4-fill"></i> Pengaturan
+            </div>
+            <div class="menu-item" id="menuLogs" onclick="showPage('logsPage')">
+                <i class="ri-history-fill"></i> Log Aktivitas
+            </div>
+
+            <div class="menu-item logout-item" onclick="bukaModalLogout()" style="cursor: pointer;">
+                <i class="ri-logout-box-r-fill"></i> Logout
+            </div>
+        </div>
+    </div>
+
+    <div class="main">
+        <!-- Mobile Toggle Button -->
+        <button class="mobile-toggle" onclick="toggleMobileMenu()">
+            <i class="ri-menu-line"></i>
+        </button>
+
+        <!-- ========== DASHBOARD PAGE ========== -->
+        <div id="dashboardPage" class="page-content active">
+            <div class="navbar">
+                <h1>Dashboard Pangkalan ADEQUA</h1>
+                <span>Sistem Monitoring Stock, Penjualan, dan Profit Harian</span>
+            </div>
+
+            <div class="cards">
+                <div class="card">
+                    <div class="card-header">
+                        <span>Stock Gas</span>
+                        <div class="card-icon" style="background: #fee2e2; color: #ef4444; border-radius: 8px;">
+                            <i class="ri-fire-fill"></i>
+                        </div>
+                    </div>
+                    <h2 id="totalStockGas">0</h2>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span>Stock Aqua</span>
+                        <div class="card-icon" style="background: #e0f2fe; color: #0ea5e9; border-radius: 8px;">
+                            <i class="ri-drop-fill"></i>
+                        </div>
+                    </div>
+                    <h2 id="totalStockAqua">0</h2>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span>Profit Gas</span>
+                        <div class="card-icon" style="background: #dcfce7; color: #22c55e; border-radius: 8px;">
+                            <i class="ri-wallet-3-fill"></i>
+                        </div>
+                    </div>
+                    <h2 id="profitGas">Rp 0</h2>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span>Profit Aqua</span>
+                        <div class="card-icon" style="background: #f3e8ff; color: #a855f7; border-radius: 8px;">
+                            <i class="ri-wallet-3-fill"></i>
+                        </div>
+                    </div>
+                    <h2 id="profitAqua">Rp 0</h2>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span>Total Profit</span>
+                        <div class="card-icon" style="background: #fef3c7; color: #f59e0b; border-radius: 8px;">
+                            <i class="ri-wallet-3-fill"></i>
+                        </div>
+                    </div>
+                    <h2 id="totalProfit">Rp 0</h2>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-top: 24px;">
+                <div class="chart-card" style="height: 350px;">
+                    <h3 style="color: var(--text-primary); margin-top: 0; margin-bottom: 15px; font-size: 15px; display: flex; align-items: center; gap: 8px; font-weight: 600;">
+                        <i class="ri-bar-chart-fill" style="color: #38bdf8;"></i> Grafik Penjualan
+                    </h3>
+                    <div style="position: relative; height: 270px;">
+                        <canvas id="salesChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card" style="height: 350px;">
+                    <h3 style="color: var(--text-primary); margin-top: 0; margin-bottom: 15px; font-size: 15px; display: flex; align-items: center; gap: 8px; font-weight: 600;">
+                        <i class="ri-line-chart-fill" style="color: #34d399;"></i> Grafik Keuntungan
+                    </h3>
+                    <div style="position: relative; height: 270px;">
+                        <canvas id="profitChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== INPUT STOCK PAGE ========== -->
+        <div id="inputPage" class="page-content" style="display:none;">
+            <div class="navbar">
+                <h1>Input Stock</h1>
+                <span>Input Data Transaksi Logistik LPG 3KG & Aqua Galon</span>
+            </div>
+
+            <div class="form-card">
+                <input type="date" id="tanggal">
+                <select id="kategori" style="cursor: pointer;">
+                    <option value="LPG Warung">LPG Warung</option>
+                    <option value="LPG Ecer">LPG Ecer</option>
+                    <option value="Aqua Warung">Aqua Warung</option>
+                    <option value="Aqua Ecer">Aqua Ecer</option>
+                </select>
+                <input type="number" id="masuk" placeholder="Stok Masuk / Refill">
+                <input type="number" id="keluar" placeholder="Stok Keluar / Terjual">
+                <button onclick="simpan()">
+                    <i class="ri-save-line"></i> Simpan
+                </button>
+            </div>
+
+            <div class="filter-download">
+                <div class="filter-box">
+                    <label>Dari Tanggal</label>
+                    <input type="date" id="startDate">
+                </div>
+                <div class="filter-box">
+                    <label>Sampai Tanggal</label>
+                    <input type="date" id="endDate">
+                </div>
+                <button class="download-btn excel" onclick="downloadExcel()"><i class="ri-file-excel-2-line"></i> Download Excel</button>
+                <button class="download-btn pdf" onclick="downloadPDF()"><i class="ri-file-pdf-2-line"></i> Download PDF</button>
+            </div>
+
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Komoditas & Kategori</th>
+                            <th>Masuk</th>
+                            <th>Keluar</th>
+                            <th>Sisa Stok Berjalan</th>
+                            <th>Oleh</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTable"></tbody>
+                </table>
+                <div id="pagination"></div>
+            </div>
+        </div>
+
+        <!-- ========== SETTING PAGE ========== -->
+        <div id="settingPage" class="page-content" style="display:none;">
+            <div class="navbar">
+                <h1>Pengaturan System</h1>
+                <span>Pengaturan Tampilan, Harga Komoditas & Manajemen Hak Akses</span>
+            </div>
+            
+            <!-- Pengaturan Tampilan (Theme & Font) -->
+            <div class="setting-box">
+                <h3><i class="ri-paint-brush-fill" style="color: var(--accent-blue);"></i> Konfigurasi Tampilan Web</h3>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500;">Tema Warna</label>
+                        <select id="configThemeSelect" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); cursor: pointer; outline: none; font-family: var(--app-font); font-size: 13px;">
+                            <option value="light">Light (Putih Bersih)</option>
+                            <option value="dark">Dark (Gelap Malam)</option>
+                            <option value="midnight">Midnight (Premium Gelap & Emas)</option>
+                            <option value="ocean">Ocean (Biru Samudra)</option>
+                            <option value="emerald">Emerald (Hijau Alam)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500;">Gaya Tulisan (Font)</label>
+                        <select id="configFontSelect" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); cursor: pointer; outline: none; font-family: var(--app-font); font-size: 13px;">
+                            <option value="Inter">Inter (Profesional, Rapi)</option>
+                            <option value="Outfit">Outfit (Premium, Modern)</option>
+                            <option value="Poppins">Poppins (Bulat, Ramah)</option>
+                            <option value="Roboto">Roboto (Google Standar)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button onclick="applyUniversalConfig()" style="background: var(--gradient-blue); color: #fff; border: none; padding: 12px 20px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; font-family: var(--app-font);">
+                    <i class="ri-save-3-line"></i> Simpan Tampilan
+                </button>
+            </div>
+
+            <!-- Pengaturan Logo Aplikasi -->
+            <div class="setting-box" style="margin-top: 20px;">
+                <h3><i class="ri-image-add-fill" style="color: var(--accent-purple);"></i> Pengaturan Logo Aplikasi</h3>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Unggah gambar baru untuk mengganti logo di halaman Login dan Dashboard (Maks. 5MB, format PNG/JPG).</p>
+                
+                <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 250px;">
+                        <input type="file" id="logoUploadInput" accept="image/png, image/jpeg, image/webp" style="width: 100%; padding: 10px; border-radius: 10px; border: 1px dashed var(--border-medium); background: var(--bg-input); color: var(--text-primary); cursor: pointer; outline: none; font-family: var(--app-font); font-size: 13px;">
+                        <button id="btnSaveLogo" onclick="uploadNewLogo()" style="margin-top: 12px; background: var(--gradient-purple); color: #fff; border: none; padding: 12px 20px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; font-family: var(--app-font); width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <i class="ri-upload-cloud-2-line"></i> <span>Unggah & Simpan Logo</span>
+                        </button>
+                    </div>
+                    <div style="width: 180px; text-align: center; background: var(--bg-card-solid); border: 1px solid var(--border-subtle); padding: 16px; border-radius: 12px;">
+                        <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600;">Preview Logo Baru</p>
+                        <img id="logoPreview" src="ADEQUA-LOGO.png" alt="Preview Logo" style="width: 100%; height: auto; max-height: 80px; object-fit: contain; border-radius: 4px;">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Create Account -->
+            <div class="setting-box">
+                <h3><i class="ri-user-add-fill" style="color: var(--accent-blue);"></i> Buat Akun & Atur Hak Akses</h3>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500;">Username</label>
+                        <input type="text" id="regUsername" placeholder="Masukkan username baru" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+                    </div>
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500;">Password</label>
+                        <input type="password" id="regPassword" placeholder="Masukkan password" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+                    </div>
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500;">Hak Akses</label>
+                        <select id="regRole" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); cursor: pointer; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+                            <option value="user">User Biasa</option>
+                            <option value="admin">Admin (Akses Penuh)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button onclick="createAccount()" style="background: var(--gradient-blue); color: #fff; border: none; padding: 12px 20px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; font-family: 'Inter', sans-serif;">
+                    <i class="ri-user-add-line"></i> Buat Akun
+                </button>
+            </div>
+            
+            <!-- User List -->
+            <div class="setting-box" style="margin-top: 20px;">
+                <h3><i class="ri-team-fill" style="color: var(--accent-green);"></i> Daftar Akun Terdaftar</h3>
+                
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Role/Akses</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Price Configuration -->
+            <div class="setting-box" style="margin-top: 20px;">
+                <h3><i class="ri-price-tag-3-fill" style="color: var(--accent-amber);"></i> Konfigurasi Harga LPG & Aqua</h3>
+                
+                <h4 style="color: #60a5fa; margin: 12px 0 8px; font-size: 13px; font-weight: 600;">• Komoditas LPG 3KG</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px;">
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px;">Modal LPG (Warung)</label>
+                        <input type="number" id="modalWarung" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+                    </div>
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px;">Jual LPG Warung</label>
+                        <input type="number" id="jualWarung" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+                    </div>
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px;">Modal LPG (Ecer)</label>
+                        <input type="number" id="modalEcer" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+                    </div>
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px;">Jual LPG Ecer</label>
+                        <input type="number" id="jualEcer" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+                    </div>
+                </div>
+
+                <h4 style="color: #34d399; margin: 12px 0 8px; font-size: 13px; font-weight: 600;">• Komoditas Aqua Galon</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px;">
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px;">Modal Aqua (Warung)</label>
+                        <input type="number" id="modalAquaWarung" placeholder="14000" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+                    </div>
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px;">Jual Aqua Warung</label>
+                        <input type="number" id="jualAquaWarung" placeholder="16000" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+                    </div>
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px;">Modal Aqua (Ecer)</label>
+                        <input type="number" id="modalAquaEcer" placeholder="15000" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+                    </div>
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px;">Jual Aqua Ecer</label>
+                        <input type="number" id="jualAquaEcer" placeholder="18000" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+                    </div>
+                </div>
+
+                <div style="text-align: right;">
+                    <button onclick="simpanSetting()" style="background: var(--gradient-blue); color: #fff; border: none; padding: 12px 20px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; font-family: 'Inter', sans-serif;">
+                        <i class="ri-save-line"></i> Simpan Konfigurasi Harga
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== LOGS PAGE ========== -->
+        <div id="logsPage" class="page-content" style="display:none;">
+            <div class="navbar">
+                <h1>Log Aktivitas Sistem</h1>
+                <span>Memantau Tindakan Manipulasi Data oleh Pengguna (Admin Only)</span>
+            </div>
+
+            <div class="table-card" style="margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="color: var(--text-primary); margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; font-weight: 600;">
+                        <i class="ri-file-list-3-line" style="color: #38bdf8;"></i> Riwayat Perubahan & Aksi
+                    </h3>
+                    <button onclick="loadLogs()" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border-subtle); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 4px; transition: var(--transition); font-family: 'Inter', sans-serif;">
+                        <i class="ri-refresh-line"></i> Refresh
+                    </button>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: flex-end; background: rgba(255,255,255,0.02); padding: 16px; border-radius: 12px; border: 1px solid var(--border-subtle);">
+                    <div>
+                        <label style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Dari Tanggal</label>
+                        <input type="date" id="logStartDate" style="background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-subtle); padding: 10px 12px; border-radius: 8px; outline: none; font-size: 13px; font-family: 'Inter', sans-serif;">
+                    </div>
+                    <div>
+                        <label style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Sampai Tanggal</label>
+                        <input type="date" id="logEndDate" style="background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-subtle); padding: 10px 12px; border-radius: 8px; outline: none; font-size: 13px; font-family: 'Inter', sans-serif;">
+                    </div>
+                    <div>
+                        <label style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Tipe Aksi</label>
+                        <select id="logActionType" style="background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-subtle); padding: 10px 12px; border-radius: 8px; outline: none; min-width: 140px; font-size: 13px; cursor: pointer; font-family: 'Inter', sans-serif;">
+                            <option value="ALL">Semua Aksi</option>
+                            <option value="INPUT">INPUT</option>
+                            <option value="DELETE">DELETE</option>
+                            <option value="EDIT HARGA">EDIT HARGA</option>
+                            <option value="SET PIN">SET PIN</option>
+                            <option value="RESET PIN">RESET PIN</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="filterLogs()" style="background: var(--gradient-blue); color: #fff; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; font-family: 'Inter', sans-serif;">
+                            Filter
+                        </button>
+                        <button onclick="resetLogFilters()" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border-subtle); padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; font-family: 'Inter', sans-serif;">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 20%;">Waktu Sistem</th>
+                            <th style="width: 15%;">Eksekutor</th>
+                            <th style="width: 15%;">Tipe Aksi</th>
+                            <th style="width: 50%;">Deskripsi Log Kejadian</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logTableBody">
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                                Sedang memuat riwayat log... 🔄
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== EDIT USER MODAL ========== -->
+    <div id="editUserModal" class="custom-modal-overlay">
+        <div style="background: linear-gradient(145deg, #1e293b, #0f172a); padding: 28px; border-radius: 20px; width: 90%; max-width: 400px; border: 1px solid var(--border-medium); box-shadow: 0 25px 60px rgba(0,0,0,0.5); box-sizing: border-box;">
+            <h3 style="color: var(--text-primary); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; margin-top: 0; font-size: 16px; font-weight: 600;">
+                <i class="ri-user-settings-line" style="color: var(--accent-blue);"></i> Edit Profil User
+            </h3>
+            
+            <input type="hidden" id="editUserId">
+
+            <div style="margin-bottom: 14px;">
+                <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500;">Username</label>
+                <input type="text" id="editUsername" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+            </div>
+
+            <div style="margin-bottom: 14px;">
+                <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500;">Password Baru (Kosongkan jika tidak diubah)</label>
+                <input type="password" id="editPassword" placeholder="Masukkan password baru" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500;">Hak Akses (Role)</label>
+                <select id="editRole" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); cursor: pointer; box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+                    <option value="user">user</option>
+                    <option value="admin">admin</option>
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button onclick="closeEditModal()" style="background: #f1f5f9; color: var(--text-secondary); border: 1px solid var(--border-subtle); padding: 10px 18px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; font-family: 'Inter', sans-serif;">
+                    Batal
+                </button>
+                <button onclick="simpanPerubahanUser()" style="background: var(--gradient-green); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; font-family: 'Inter', sans-serif;">
+                    Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== GANTI PASSWORD MODAL ========== -->
+    <div id="gantiPasswordModal" class="custom-modal-overlay">
+        <div style="background: linear-gradient(145deg, #1e293b, #0f172a); padding: 28px; border-radius: 20px; width: 90%; max-width: 400px; border: 1px solid var(--border-medium); box-shadow: 0 25px 60px rgba(0,0,0,0.5); box-sizing: border-box;">
+            <h3 style="color: var(--text-primary); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; margin-top: 0; font-size: 16px; font-weight: 600;">
+                <i class="ri-lock-password-fill" style="color: var(--accent-blue);"></i> Ganti Password Saya
+            </h3>
+
+            <div style="margin-bottom: 14px;">
+                <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500;">Password Lama</label>
+                <input type="password" id="oldPasswordInput" placeholder="Masukkan password saat ini" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500;">Password Baru</label>
+                <input type="password" id="newPasswordInput" placeholder="Masukkan password baru" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button onclick="tutupModalGantiPassword()" style="background: #f1f5f9; color: var(--text-secondary); border: 1px solid var(--border-subtle); padding: 10px 18px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; font-family: 'Inter', sans-serif;">
+                    Batal
+                </button>
+                <button onclick="simpanPasswordBaru()" style="background: var(--gradient-blue); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; font-family: 'Inter', sans-serif;">
+                    Simpan Password
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== EDIT STOCK MODAL ========== -->
+    <div id="editStockModal" class="custom-modal-overlay">
+        <div style="background: linear-gradient(145deg, #1e293b, #0f172a); padding: 28px; border-radius: 20px; width: 90%; max-width: 400px; border: 1px solid var(--border-medium); box-shadow: 0 25px 60px rgba(0,0,0,0.5); box-sizing: border-box;">
+            <h3 style="color: var(--text-primary); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; margin-top: 0; font-size: 16px; font-weight: 600;">
+                <i class="ri-edit-box-fill" style="color: var(--accent-amber);"></i> Edit Data Stock
+            </h3>
+            
+            <input type="hidden" id="editStockId">
+
+            <div style="margin-bottom: 14px;">
+                <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500;">Tanggal</label>
+                <input type="date" id="editStockTanggal" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+            </div>
+
+            <div style="margin-bottom: 14px;">
+                <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500;">Kategori</label>
+                <select id="editStockKategori" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); cursor: pointer; box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+                    <option value="LPG Warung">LPG Warung</option>
+                    <option value="LPG Ecer">LPG Ecer</option>
+                    <option value="Aqua Warung">Aqua Warung</option>
+                    <option value="Aqua Ecer">Aqua Ecer</option>
+                </select>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+                <div>
+                    <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500;">Stok Masuk</label>
+                    <input type="number" id="editStockMasuk" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="color: var(--text-secondary); display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500;">Stok Keluar</label>
+                    <input type="number" id="editStockKeluar" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-subtle); background: var(--bg-input); color: var(--text-primary); box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; font-size: 13px;">
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button onclick="tutupModalEditStock()" style="background: #f1f5f9; color: var(--text-secondary); border: 1px solid var(--border-subtle); padding: 10px 18px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; font-family: 'Inter', sans-serif;">
+                    Batal
+                </button>
+                <button onclick="simpanEditStock()" style="background: var(--gradient-amber); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; font-family: 'Inter', sans-serif;">
+                    Simpan Perubahan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== LOGOUT MODAL ========== -->
+    <div id="logoutConfirmModal" class="custom-modal-overlay">
+        <div class="modal-content" style="max-width: 400px; text-align: center; border-radius: var(--radius-xl);">
+            <div style="background: rgba(239, 68, 68, 0.1); width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: var(--accent-red); font-size: 28px;">
+                <i class="ri-logout-box-r-line"></i>
+            </div>
+            <h3 style="margin-bottom: 8px; font-size: 20px; color: var(--text-primary);">Konfirmasi Logout</h3>
+            <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; line-height: 1.5;">Apakah kamu yakin mau keluar dari sistem manajemen pangkalan?</p>
+            <div style="display: flex; gap: 12px;">
+                <button onclick="tutupModalLogout()" style="flex: 1; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-medium); background: var(--bg-card); color: var(--text-secondary); cursor: pointer; font-weight: 500; font-family: var(--app-font);">Batal</button>
+                <button onclick="eksekusiLogout()" style="flex: 1; padding: 12px; border-radius: var(--radius-sm); border: none; background: var(--accent-red); color: white; cursor: pointer; font-weight: 600; font-family: var(--app-font); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);">Ya, Keluar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== UNIVERSAL CONFIRM MODAL ========== -->
+    <div id="universalConfirmModal" class="custom-modal-overlay">
+        <div class="modal-content" style="max-width: 400px; text-align: center; border-radius: var(--radius-xl);">
+            <div id="uniConfirmIcon" style="background: rgba(239, 68, 68, 0.1); width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: var(--accent-red); font-size: 28px;">
+                <i class="ri-error-warning-fill"></i>
+            </div>
+            <h3 id="uniConfirmTitle" style="margin-bottom: 8px; font-size: 20px; color: var(--text-primary);">Konfirmasi</h3>
+            <p id="uniConfirmMessage" style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; line-height: 1.5;">Apakah kamu yakin?</p>
+            <div style="display: flex; gap: 12px;">
+                <button onclick="tutupUniversalConfirmModal()" style="flex: 1; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-medium); background: var(--bg-card); color: var(--text-secondary); cursor: pointer; font-weight: 500; font-family: var(--app-font);">Batal</button>
+                <button id="uniConfirmBtn" onclick="eksekusiUniversalConfirm()" style="flex: 1; padding: 12px; border-radius: var(--radius-sm); border: none; background: var(--accent-red); color: white; cursor: pointer; font-weight: 600; font-family: var(--app-font); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">Ya, Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
+    <script>
+        async function getBase64Image(url) {
+            const data = await fetch(url);
+            const blob = await data.blob();
+            return new Promise(resolve => {
+                const reader = new FileReader();
+                reader.readAsDataURL(blob);
+                reader.onloadend = () => {
+                    resolve(reader.result);
+                };
+            });
+        }
+
+        function bukaModalLogout() {
+            const modal = document.getElementById("logoutConfirmModal");
+            if(modal) modal.style.display = "flex";
+        }
+
+        function tutupModalLogout() {
+            const modal = document.getElementById("logoutConfirmModal");
+            if(modal) modal.style.display = "none";
+        }
+
+        function eksekusiLogout() {
+            tutupModalLogout();
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = window.location.origin; 
+        }
+
+        // ==========================================
+        // UNIVERSAL CONFIRM MODAL LOGIC
+        // ==========================================
+        let universalConfirmCallback = null;
+
+        function bukaUniversalConfirmModal(title, message, iconClass, iconColorBg, iconColorText, btnText, btnColor, onConfirmCallback) {
+            document.getElementById("uniConfirmTitle").innerText = title;
+            document.getElementById("uniConfirmMessage").innerHTML = message;
+            
+            const iconContainer = document.getElementById("uniConfirmIcon");
+            iconContainer.style.background = iconColorBg;
+            iconContainer.style.color = iconColorText;
+            iconContainer.innerHTML = `<i class="${iconClass}"></i>`;
+            
+            const actionBtn = document.getElementById("uniConfirmBtn");
+            actionBtn.innerText = btnText;
+            actionBtn.style.background = btnColor;
+            
+            universalConfirmCallback = onConfirmCallback;
+            
+            const modal = document.getElementById("universalConfirmModal");
+            if(modal) modal.style.display = "flex";
+        }
+
+        function tutupUniversalConfirmModal() {
+            const modal = document.getElementById("universalConfirmModal");
+            if(modal) modal.style.display = "none";
+            universalConfirmCallback = null;
+        }
+
+        function eksekusiUniversalConfirm() {
+            if (typeof universalConfirmCallback === "function") {
+                universalConfirmCallback();
+            }
+            tutupUniversalConfirmModal();
+        }
+    </script>
+    <script src="script.js"></script>
+
+    <!-- Register Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => console.log('ServiceWorker registration successful with scope: ', registration.scope))
+                    .catch(err => console.log('ServiceWorker registration failed: ', err));
+            });
+        }
+    </script>
+</body>
+</html>

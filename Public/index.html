@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Pangkalan ADEQUA</title>
+    <meta name="description" content="Sistem Monitoring Stock & Penjualan Pangkalan Gas LPG & Aqua Galon ADEQUA">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="theme.css">
+    <link rel="stylesheet" href="login-style.css">
+    <script src="theme-manager.js"></script>
+    
+    <!-- PWA Setup -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ADEQUA">
+    <link rel="apple-touch-icon" href="ADEQUA.png">
+</head>
+<body>
+    <!-- Animated Background Orbs -->
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="bg-orb orb-3"></div>
+
+    <div class="login-split-wrapper">
+        <!-- Left Side: Image/Branding -->
+        <div class="login-showcase">
+            <div class="showcase-content">
+                <h1 class="showcase-title">ADEQUA<br>Logistics</h1>
+                <p class="showcase-subtitle">Sistem Manajemen Distribusi Gas & Air Galon Terintegrasi. Mengelola stok dan penjualan dengan presisi tingkat tinggi.</p>
+            </div>
+            <img src="login-bg.png" alt="Logistics 3D" class="showcase-image">
+            <div class="showcase-overlay"></div>
+        </div>
+
+        <!-- Right Side: Form -->
+        <div class="login-container">
+            <!-- Step 1: Username & Password -->
+            <div id="step1" class="login-step active">
+                <div class="login-header">
+                    <img src="ADEQUA-LOGO.png" alt="Logo" class="app-logo">
+                    <h2>Selamat Datang</h2>
+                    <p class="subtitle">Silakan login untuk mengakses dashboard</p>
+                    
+                    <div id="error-message" class="alert-box alert-error" style="display: none;">
+                        <i class="ri-error-warning-fill"></i> <span id="error-text"></span>
+                    </div>
+                </div>
+
+                <form id="loginForm">
+                    <div class="input-group">
+                        <label for="username">Username</label>
+                        <div class="input-wrapper">
+                            <i class="ri-user-3-fill input-icon"></i>
+                            <input type="text" id="username" required placeholder="Masukkan username" autocomplete="off">
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="password">Password</label>
+                        <div class="input-wrapper">
+                            <i class="ri-lock-password-fill input-icon"></i>
+                            <input type="password" id="password" required placeholder="Masukkan password">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn-login" id="btnLogin">
+                        <span class="btn-text">Masuk <i class="ri-arrow-right-line"></i></span>
+                        <span class="btn-loader" style="display:none;"><i class="ri-loader-4-line spin"></i> Verifikasi...</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Step 2: PIN Verification -->
+            <div id="step2" class="login-step">
+                <div class="step-back" onclick="goBackToStep1()">
+                    <i class="ri-arrow-left-s-line"></i> Kembali
+                </div>
+
+                <div class="pin-icon-box">
+                    <i class="ri-shield-keyhole-fill"></i>
+                </div>
+                
+                <h2>Verifikasi Keamanan</h2>
+                <p class="subtitle">Masukkan 6 digit PIN untuk <strong id="pinUserDisplay">-</strong></p>
+
+                <div id="pin-error" class="alert-box alert-error" style="display: none;">
+                    <i class="ri-error-warning-fill"></i> <span id="pin-error-text"></span>
+                </div>
+
+                <div class="pin-input-container" id="pinInputContainer">
+                    <input type="password" maxlength="1" class="pin-box" data-index="0" inputmode="numeric" autocomplete="off">
+                    <input type="password" maxlength="1" class="pin-box" data-index="1" inputmode="numeric" autocomplete="off">
+                    <input type="password" maxlength="1" class="pin-box" data-index="2" inputmode="numeric" autocomplete="off">
+                    <div class="pin-separator">—</div>
+                    <input type="password" maxlength="1" class="pin-box" data-index="3" inputmode="numeric" autocomplete="off">
+                    <input type="password" maxlength="1" class="pin-box" data-index="4" inputmode="numeric" autocomplete="off">
+                    <input type="password" maxlength="1" class="pin-box" data-index="5" inputmode="numeric" autocomplete="off">
+                </div>
+
+                <button class="btn-login" id="btnVerifyPin" onclick="verifyPin()">
+                    <span class="btn-text"><i class="ri-shield-check-fill"></i> Autentikasi</span>
+                    <span class="btn-loader" style="display:none;"><i class="ri-loader-4-line spin"></i> Memverifikasi...</span>
+                </button>
+            </div>
+
+            <!-- Step 3: Set New PIN -->
+            <div id="step3" class="login-step">
+                <div class="step-back" onclick="goBackToStep1()">
+                    <i class="ri-arrow-left-s-line"></i> Kembali
+                </div>
+
+                <div class="pin-icon-box set-pin">
+                    <i class="ri-key-2-fill"></i>
+                </div>
+                
+                <h2>Buat PIN Keamanan</h2>
+                <p class="subtitle">Amankan akun <strong id="setPinUserDisplay">-</strong> dengan PIN 6 digit</p>
+
+                <div id="setpin-error" class="alert-box alert-error" style="display: none;">
+                    <i class="ri-error-warning-fill"></i> <span id="setpin-error-text"></span>
+                </div>
+
+                <div class="pin-input-container" id="setPinInputContainer">
+                    <input type="password" maxlength="1" class="pin-box" data-index="0" inputmode="numeric" autocomplete="off">
+                    <input type="password" maxlength="1" class="pin-box" data-index="1" inputmode="numeric" autocomplete="off">
+                    <input type="password" maxlength="1" class="pin-box" data-index="2" inputmode="numeric" autocomplete="off">
+                    <div class="pin-separator">—</div>
+                    <input type="password" maxlength="1" class="pin-box" data-index="3" inputmode="numeric" autocomplete="off">
+                    <input type="password" maxlength="1" class="pin-box" data-index="4" inputmode="numeric" autocomplete="off">
+                    <input type="password" maxlength="1" class="pin-box" data-index="5" inputmode="numeric" autocomplete="off">
+                </div>
+
+                <button class="btn-login btn-set-pin" id="btnSetPin" onclick="setNewPin()">
+                    <span class="btn-text"><i class="ri-key-2-fill"></i> Simpan PIN</span>
+                    <span class="btn-loader" style="display:none;"><i class="ri-loader-4-line spin"></i> Menyimpan...</span>
+                </button>
+            </div>
+
+            <div class="footer-brand">
+                <p>&copy; 2026 Pangkalan ADEQUA</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="theme-manager.js"></script>
+    <script src="login.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => console.log('ServiceWorker registration successful with scope: ', registration.scope))
+                    .catch(err => console.log('ServiceWorker registration failed: ', err));
+            });
+        }
+    </script>
+</body>
+</html>

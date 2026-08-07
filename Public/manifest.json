@@ -1,0 +1,21 @@
+{
+    "name": "Pangkalan ADEQUA",
+    "short_name": "ADEQUA",
+    "description": "Sistem Monitoring Stock & Penjualan Pangkalan Gas LPG & Aqua Galon ADEQUA",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#f8fafc",
+    "theme_color": "#ffffff",
+    "icons": [
+        {
+            "src": "ADEQUA.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "ADEQUA.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
