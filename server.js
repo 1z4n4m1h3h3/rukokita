@@ -256,7 +256,10 @@ app.post("/api/login", loginLimiter, (req, res) => {
 
     const query = `SELECT * FROM users WHERE username = ?`;
     db.get(query, [username], async (err, row) => {
-        if (err) return res.status(500).json({ success: false, message: "Error pada server" });
+        if (err) {
+            console.error("❌ DB Error on login:", err);
+            return res.status(500).json({ success: false, message: "Error pada server" });
+        }
         if (!row) return res.status(401).json({ success: false, message: "Username atau Password salah!" });
 
         try {
@@ -275,6 +278,39 @@ app.post("/api/login", loginLimiter, (req, res) => {
         } catch (e) {
             console.error("❌ Error on compare login:", e);
             res.status(500).json({ success: false, message: "Gagal memproses password" });
+        }
+    });
+});
+
+/* ==========================================
+   API ENDPOINTS: FORGOT PASSWORD
+========================================== */
+app.post("/api/forgot-password", loginLimiter, (req, res) => {
+    const { username, pin, newPassword } = req.body;
+    if (!username || !pin || !newPassword) {
+        return res.status(400).json({ success: false, message: "Username, PIN, dan Password Baru wajib diisi!" });
+    }
+
+    db.get(`SELECT pin FROM users WHERE username = ?`, [username], async (err, row) => {
+        if (err) return res.status(500).json({ success: false, message: "Error pada server" });
+        if (!row) return res.status(404).json({ success: false, message: "Username tidak ditemukan" });
+        if (!row.pin) return res.status(400).json({ success: false, message: "Akun ini belum memiliki PIN!" });
+
+        try {
+            const pinMatch = await bcrypt.compare(pin, row.pin);
+            if (pinMatch) {
+                const hashedPassword = await bcrypt.hash(newPassword, 10);
+                db.run(`UPDATE users SET password = ? WHERE username = ?`, [hashedPassword, username], (updateErr) => {
+                    if (updateErr) return res.status(500).json({ success: false, message: "Gagal mereset password" });
+                    catatLog(username, "RESET PASSWORD", `User ${username} mereset password menggunakan PIN`);
+                    res.json({ success: true, message: "Password berhasil di-reset! Silakan login." });
+                });
+            } else {
+                res.status(401).json({ success: false, message: "PIN salah! Gagal mereset password." });
+            }
+        } catch (e) {
+            console.error("❌ Error on reset password:", e);
+            res.status(500).json({ success: false, message: "Gagal memproses password baru" });
         }
     });
 });

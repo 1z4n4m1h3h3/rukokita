@@ -159,6 +159,63 @@ async function setNewPin() {
 }
 
 /* =========================
+   STEP 4: RESET PASSWORD
+========================= */
+const resetForm = document.getElementById('resetForm');
+if (resetForm) {
+    resetForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const username = document.getElementById('resetUsername').value.trim();
+        const pin = document.getElementById('resetPin').value;
+        const newPassword = document.getElementById('resetNewPassword').value;
+        const errorContainer = document.getElementById('reset-error');
+        const errorText = document.getElementById('reset-error-text');
+        const btn = document.getElementById('btnReset');
+
+        errorContainer.style.display = 'none';
+
+        if (pin.length !== 6 || !/^\d{6}$/.test(pin)) {
+            errorText.innerText = 'PIN harus 6 digit angka!';
+            errorContainer.style.display = 'flex';
+            return;
+        }
+
+        if (newPassword.length < 5) {
+            errorText.innerText = 'Password baru minimal 5 karakter!';
+            errorContainer.style.display = 'flex';
+            return;
+        }
+
+        toggleBtnLoading(btn, true);
+
+        try {
+            const response = await fetch('/api/forgot-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, pin, newPassword })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                alert('Berhasil! ' + data.message);
+                goBackToStep1();
+                document.getElementById('resetForm').reset();
+            } else {
+                errorText.innerText = data.message || 'Gagal mereset password!';
+                errorContainer.style.display = 'flex';
+            }
+        } catch (err) {
+            errorText.innerText = 'Gagal terhubung ke server.';
+            errorContainer.style.display = 'flex';
+        } finally {
+            toggleBtnLoading(btn, false);
+        }
+    });
+}
+
+/* =========================
    STEP NAVIGATION
 ========================= */
 function showStep(stepId) {

@@ -72,6 +72,9 @@
                         <span class="btn-text">Masuk <i class="ri-arrow-right-line"></i></span>
                         <span class="btn-loader" style="display:none;"><i class="ri-loader-4-line spin"></i> Verifikasi...</span>
                     </button>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <a href="#" onclick="showStep('step4')" style="color: var(--primary-color); text-decoration: none; font-size: 0.9rem; font-weight: 500;">Lupa Password?</a>
+                    </div>
                 </form>
             </div>
 
@@ -139,6 +142,55 @@
                     <span class="btn-text"><i class="ri-key-2-fill"></i> Simpan PIN</span>
                     <span class="btn-loader" style="display:none;"><i class="ri-loader-4-line spin"></i> Menyimpan...</span>
                 </button>
+            </div>
+
+            <!-- Step 4: Forgot Password / Reset Password -->
+            <div id="step4" class="login-step">
+                <div class="step-back" onclick="goBackToStep1()">
+                    <i class="ri-arrow-left-s-line"></i> Kembali
+                </div>
+
+                <div class="pin-icon-box" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                    <i class="ri-lock-unlock-fill"></i>
+                </div>
+                
+                <h2>Reset Password</h2>
+                <p class="subtitle">Masukkan PIN 6-digit untuk mereset password</p>
+
+                <div id="reset-error" class="alert-box alert-error" style="display: none;">
+                    <i class="ri-error-warning-fill"></i> <span id="reset-error-text"></span>
+                </div>
+
+                <form id="resetForm" style="margin-top: 20px;">
+                    <div class="input-group">
+                        <label>Username</label>
+                        <div class="input-wrapper">
+                            <i class="ri-user-3-fill input-icon"></i>
+                            <input type="text" id="resetUsername" required placeholder="Username akun">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>PIN 6-Digit</label>
+                        <div class="input-wrapper">
+                            <i class="ri-key-2-fill input-icon"></i>
+                            <input type="password" id="resetPin" required placeholder="Masukkan PIN lama" maxlength="6" inputmode="numeric">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Password Baru</label>
+                        <div class="input-wrapper">
+                            <i class="ri-lock-password-fill input-icon"></i>
+                            <input type="password" id="resetNewPassword" required placeholder="Password baru">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-login" id="btnReset" style="background: var(--gradient-primary);">
+                        <span class="btn-text">Reset Password <i class="ri-check-line"></i></span>
+                        <span class="btn-loader" style="display:none;"><i class="ri-loader-4-line spin"></i> Mereset...</span>
+                    </button>
+                </form>
             </div>
 
             <div class="footer-brand">
