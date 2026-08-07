@@ -38,7 +38,10 @@ const pinLimiter = rateLimit({
 /* =========================
 DATABASE CONNECTION
 ========================= */
-const dbPath = process.env.TURSO_DATABASE_URL || "database.db";
+let dbPath = process.env.TURSO_DATABASE_URL || "database.db";
+if (process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN) {
+    dbPath = `${process.env.TURSO_DATABASE_URL}?authToken=${process.env.TURSO_AUTH_TOKEN}`;
+}
 
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
