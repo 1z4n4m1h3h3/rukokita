@@ -115,7 +115,12 @@ function initFilterDates() {
 ========================= */
 async function loadSettingHarga() {
     try {
-        const res = await fetch("/api/setting-harga");
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/setting-harga", {
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
         if (res.ok) {
             const data = await res.json();
             // Update variabel global dengan data asli dari database
