@@ -154,6 +154,9 @@ db.serialize(() => {
             deskripsi TEXT NOT NULL
         )
     `, (err) => {
+        if (!err) console.log("📝 Database Log Aktivitas Siap! ✅");
+    });
+
     // 5. Tabel Pengeluaran (Expenses)
     db.run(`
         CREATE TABLE IF NOT EXISTS expenses (
