@@ -788,14 +788,61 @@ tr:hover {
 }
 
 /* =========================
-   SELECT DROPDOWN FIX
+   CHOICES.JS PREMIUM STYLING
 ========================= */
-select option {
-    background-color: var(--bg-card) !important;
-    color: var(--text-primary) !important;
-    padding: 10px;
+.choices {
+    margin-bottom: 0;
+    font-family: var(--app-font) !important;
 }
-
+.choices__inner {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 8px !important;
+    padding: 6.5px 12px !important;
+    min-height: auto !important;
+    font-size: 13px !important;
+    color: var(--text-primary) !important;
+    display: flex;
+    align-items: center;
+}
+.choices[data-type*="select-one"]::after {
+    border: none !important;
+    content: '\f111' !important; /* Remixicon arrow-down-s-line */
+    font-family: 'remixicon' !important;
+    font-size: 16px;
+    color: var(--text-secondary);
+    right: 12px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    margin-top: 0 !important;
+    position: absolute;
+    pointer-events: none;
+}
+.choices[data-type*="select-one"].is-open::after {
+    transform: translateY(-50%) rotate(180deg) !important;
+}
+.choices__list--dropdown {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+    margin-top: 4px !important;
+    overflow: hidden;
+    z-index: 1000;
+}
+.choices__list--dropdown .choices__item {
+    font-size: 13px !important;
+    color: var(--text-secondary) !important;
+    padding: 10px 16px !important;
+    transition: all 0.2s ease;
+}
+.choices__list--dropdown .choices__item--selectable.is-highlighted {
+    background: rgba(59, 130, 246, 0.1) !important;
+    color: var(--accent-blue) !important;
+}
+.choices__list--dropdown .choices__item--selectable {
+    padding-right: 16px !important;
+}
 /* =========================
    MOBILE TOGGLE & OVERLAY
 ========================= */
