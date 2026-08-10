@@ -139,6 +139,12 @@ async function loadSettingHarga() {
             if (document.getElementById("jualAquaWarung")) document.getElementById("jualAquaWarung").value = settingHarga.jualAquaWarung;
             if (document.getElementById("modalAquaEcer")) document.getElementById("modalAquaEcer").value = settingHarga.modalAquaEcer;
             if (document.getElementById("jualAquaEcer")) document.getElementById("jualAquaEcer").value = settingHarga.jualAquaEcer;
+            
+            // Update POS Prices
+            if (document.getElementById("posHarga-LPGWarung")) document.getElementById("posHarga-LPGWarung").textContent = formatRupiah(settingHarga.jualWarung);
+            if (document.getElementById("posHarga-LPGEcer")) document.getElementById("posHarga-LPGEcer").textContent = formatRupiah(settingHarga.jualEcer);
+            if (document.getElementById("posHarga-AquaWarung")) document.getElementById("posHarga-AquaWarung").textContent = formatRupiah(settingHarga.jualAquaWarung);
+            if (document.getElementById("posHarga-AquaEcer")) document.getElementById("posHarga-AquaEcer").textContent = formatRupiah(settingHarga.jualAquaEcer);
         }
     } catch (err) {
         console.error("Gagal mengambil data setting harga dari server:", err);
@@ -275,26 +281,64 @@ async function simpan(){
 /* =========================
    LOAD DATA UTAMA & DASHBOARD
 ========================= */
+function muatDataDanGrafik() {
+    loadData();
+}
+
 async function loadData(){
     try {
         const res = await fetch("/data");
-        let data = await res.json();
+        let allData = await res.json();
+
+        // 1. Dapatkan Nilai Filter
+        const filterSelect = document.getElementById("dashboardTimeFilter");
+        const filterValue = filterSelect ? filterSelect.value : "all";
+        
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        // 2. Filter Data
+        let data = allData.filter(item => {
+            if (filterValue === "all") return true;
+            const itemDate = new Date(item.tanggal);
+            const dateOnly = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
+            
+            if (filterValue === "today") {
+                return dateOnly.getTime() === today.getTime();
+            } else if (filterValue === "this_week") {
+                const dayOfWeek = today.getDay();
+                const startOfWeek = new Date(today);
+                startOfWeek.setDate(today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)); 
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6);
+                return dateOnly >= startOfWeek && dateOnly <= endOfWeek;
+            } else if (filterValue === "this_month") {
+                return dateOnly.getMonth() === today.getMonth() && dateOnly.getFullYear() === today.getFullYear();
+            }
+            return true;
+        });
 
         // Urutkan data berdasarkan tanggal secara menaik (oldest to newest) 
         // agar perhitungan saldo akumulatif stok di pangkalan gas berjalan akurat
         data.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
 
         let html = "";
-        let totalMasukGas = 0;
-        let totalKeluarGas = 0;
-        let totalMasukAqua = 0;
-        let totalKeluarAqua = 0;
-        let profitGas = 0;
-        let profitAqua = 0;
-        let runningGas = 0;   // 🔥 Running stock for Gas
-        let runningAqua = 0;  // 🔥 Running stock for Aqua
+        let totalMasukGas = 0; let totalKeluarGas = 0;
+        let totalMasukAqua = 0; let totalKeluarAqua = 0;
+        let profitGas = 0; let profitAqua = 0;
+        let runningGas = 0; let runningAqua = 0;
+        
+        let totalOmsetGlobal = 0; let totalModalGlobal = 0;
 
         const chartDataMap = {};
+        
+        // Rekapitulasi untuk tabel rincian
+        const rincian = {
+            "LPG Warung": { qty: 0, omset: 0, modal: 0, profit: 0 },
+            "LPG Ecer": { qty: 0, omset: 0, modal: 0, profit: 0 },
+            "Aqua Warung": { qty: 0, omset: 0, modal: 0, profit: 0 },
+            "Aqua Ecer": { qty: 0, omset: 0, modal: 0, profit: 0 }
+        };
 
         data.forEach(item => {
             const masuk = Number(item.masuk) || 0;
@@ -310,19 +354,45 @@ async function loadData(){
             }
 
             let itemProfit = 0;
+            let itemOmset = 0;
+            let itemModal = 0;
+            
+            // Standarisasi nama kategori untuk rincian
+            let rincianKey = item.kategori;
+            if (rincianKey === "Warung") rincianKey = "LPG Warung";
+            if (rincianKey === "Ecer") rincianKey = "LPG Ecer";
 
-            if (item.kategori === "LPG Warung" || item.kategori === "Warung") {
-                itemProfit = keluar * (settingHarga.jualWarung - settingHarga.modalWarung);
+            if (rincianKey === "LPG Warung") {
+                itemOmset = keluar * settingHarga.jualWarung;
+                itemModal = keluar * settingHarga.modalWarung;
+                itemProfit = itemOmset - itemModal;
                 profitGas += itemProfit;
-            } else if (item.kategori === "LPG Ecer" || item.kategori === "Ecer") {
-                itemProfit = keluar * (settingHarga.jualEcer - settingHarga.modalEcer);
+            } else if (rincianKey === "LPG Ecer") {
+                itemOmset = keluar * settingHarga.jualEcer;
+                itemModal = keluar * settingHarga.modalEcer;
+                itemProfit = itemOmset - itemModal;
                 profitGas += itemProfit;
-            } else if (item.kategori === "Aqua Warung") {
-                itemProfit = keluar * (settingHarga.jualAquaWarung - settingHarga.modalAquaWarung);
+            } else if (rincianKey === "Aqua Warung") {
+                itemOmset = keluar * settingHarga.jualAquaWarung;
+                itemModal = keluar * settingHarga.modalAquaWarung;
+                itemProfit = itemOmset - itemModal;
                 profitAqua += itemProfit;
-            } else if (item.kategori === "Aqua Ecer") {
-                itemProfit = keluar * (settingHarga.jualAquaEcer - settingHarga.modalAquaEcer);
+            } else if (rincianKey === "Aqua Ecer") {
+                itemOmset = keluar * settingHarga.jualAquaEcer;
+                itemModal = keluar * settingHarga.modalAquaEcer;
+                itemProfit = itemOmset - itemModal;
                 profitAqua += itemProfit;
+            }
+            
+            totalOmsetGlobal += itemOmset;
+            totalModalGlobal += itemModal;
+            
+            // Tambahkan ke rincian
+            if (rincian[rincianKey]) {
+                rincian[rincianKey].qty += keluar;
+                rincian[rincianKey].omset += itemOmset;
+                rincian[rincianKey].modal += itemModal;
+                rincian[rincianKey].profit += itemProfit;
             }
 
             if (!chartDataMap[item.tanggal]) {
@@ -382,11 +452,38 @@ async function loadData(){
         const dataTableEl = document.getElementById("dataTable");
         if(dataTableEl) dataTableEl.innerHTML = html;
 
-        if(document.getElementById("totalStockGas")) document.getElementById("totalStockGas").innerText = totalStockGas;
-        if(document.getElementById("totalStockAqua")) document.getElementById("totalStockAqua").innerText = totalStockAqua;
-        if(document.getElementById("profitGas")) document.getElementById("profitGas").innerText = "Rp " + profitGas.toLocaleString("id-ID");
-        if(document.getElementById("profitAqua")) document.getElementById("profitAqua").innerText = "Rp " + profitAqua.toLocaleString("id-ID");
-        if(document.getElementById("totalProfit")) document.getElementById("totalProfit").innerText = "Rp " + totalProfit.toLocaleString("id-ID");
+        if(document.getElementById("totalStockGas")) animateValue(document.getElementById("totalStockGas"), 0, totalStockGas, 1200);
+        if(document.getElementById("totalStockAqua")) animateValue(document.getElementById("totalStockAqua"), 0, totalStockAqua, 1200);
+        if(document.getElementById("profitGas")) animateValue(document.getElementById("profitGas"), 0, profitGas, 1200, "Rp ");
+        if(document.getElementById("profitAqua")) animateValue(document.getElementById("profitAqua"), 0, profitAqua, 1200, "Rp ");
+        if(document.getElementById("totalProfit")) animateValue(document.getElementById("totalProfit"), 0, totalProfit, 1200, "Rp ");
+        
+        if(document.getElementById("totalOmset")) animateValue(document.getElementById("totalOmset"), 0, totalOmsetGlobal, 1200, "Rp ");
+        if(document.getElementById("totalModal")) animateValue(document.getElementById("totalModal"), 0, totalModalGlobal, 1200, "Rp ");
+
+        // RENDER TABEL RINCIAN
+        const tbodyRincian = document.getElementById("rincianTableBody");
+        if (tbodyRincian) {
+            let htmlRincian = "";
+            let totalQty = 0;
+            for (const [kat, dataObj] of Object.entries(rincian)) {
+                totalQty += dataObj.qty;
+                htmlRincian += `
+                    <tr>
+                        <td><span class="badge ${kat.toLowerCase().replace(/\s+/g, '-')}">${kat}</span></td>
+                        <td style="font-weight: bold;">${dataObj.qty}</td>
+                        <td style="color: #6366f1;">Rp ${dataObj.omset.toLocaleString("id-ID")}</td>
+                        <td style="color: #f43f5e;">Rp ${dataObj.modal.toLocaleString("id-ID")}</td>
+                        <td style="color: #22c55e; font-weight: bold;">Rp ${dataObj.profit.toLocaleString("id-ID")}</td>
+                    </tr>
+                `;
+            }
+            tbodyRincian.innerHTML = htmlRincian;
+            document.getElementById("rincianTotalQty").innerText = totalQty;
+            document.getElementById("rincianTotalOmset").innerText = "Rp " + totalOmsetGlobal.toLocaleString("id-ID");
+            document.getElementById("rincianTotalModal").innerText = "Rp " + totalModalGlobal.toLocaleString("id-ID");
+            document.getElementById("rincianTotalProfit").innerText = "Rp " + totalProfit.toLocaleString("id-ID");
+        }
 
         renderPagination(data.length);
         
@@ -775,13 +872,21 @@ async function downloadExcel(){
         return;
     }
 
+    const startDate = document.getElementById("startDate").value;
+    const endDate = document.getElementById("endDate").value;
+    if(!startDate || !endDate){
+        showToast("PILIH TANGGAL PERIODE DULU 😎", "warning");
+        return;
+    }
+
     const res = await fetch("/data");
     const data = await res.json();
     data.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
 
-    let csv = `Tanggal,Kategori,Masuk,Keluar,Sisa Stok,Oleh\n`;
+    let csv = `Tanggal,Kategori,Masuk,Keluar,Sisa Stok,Omset,Modal,Profit,Oleh\n`;
     let runningGas = 0;
     let runningAqua = 0;
+    
     data.forEach(item => {
         const masuk = Number(item.masuk) || 0;
         const keluar = Number(item.keluar) || 0;
@@ -793,8 +898,41 @@ async function downloadExcel(){
             runningGas += (masuk - keluar);
             currentRunning = runningGas;
         }
-        csv += `${item.tanggal},${item.kategori},${masuk},${keluar},${currentRunning},${item.oleh || item.username || 'admin'}\n`;
+        
+        if (item.tanggal >= startDate && item.tanggal <= endDate) {
+            let itemOmset = 0;
+            let itemModal = 0;
+            let itemProfit = 0;
+            let rincianKey = item.kategori;
+            if (rincianKey === "Warung") rincianKey = "LPG Warung";
+            if (rincianKey === "Ecer") rincianKey = "LPG Ecer";
+
+            if (rincianKey === "LPG Warung") {
+                itemOmset = keluar * settingHarga.jualWarung;
+                itemModal = keluar * settingHarga.modalWarung;
+                itemProfit = itemOmset - itemModal;
+            } else if (rincianKey === "LPG Ecer") {
+                itemOmset = keluar * settingHarga.jualEcer;
+                itemModal = keluar * settingHarga.modalEcer;
+                itemProfit = itemOmset - itemModal;
+            } else if (rincianKey === "Aqua Warung") {
+                itemOmset = keluar * settingHarga.jualAquaWarung;
+                itemModal = keluar * settingHarga.modalAquaWarung;
+                itemProfit = itemOmset - itemModal;
+            } else if (rincianKey === "Aqua Ecer") {
+                itemOmset = keluar * settingHarga.jualAquaEcer;
+                itemModal = keluar * settingHarga.modalAquaEcer;
+                itemProfit = itemOmset - itemModal;
+            }
+
+            csv += `${item.tanggal},${rincianKey},${masuk},${keluar},${currentRunning},${itemOmset},${itemModal},${itemProfit},${item.oleh || item.username || 'admin'}\n`;
+        }
     });
+
+    if (csv === `Tanggal,Kategori,Masuk,Keluar,Sisa Stok,Omset,Modal,Profit,Oleh\n`) {
+        showToast("Tidak ada data transaksi di periode tanggal tersebut 😭", "error");
+        return;
+    }
 
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = window.URL.createObjectURL(blob);
@@ -859,6 +997,9 @@ async function downloadPDF(){
         let profitAqua = 0;
         let runningGas = 0;
         let runningAqua = 0;
+        
+        let totalOmsetPDF = 0;
+        let totalModalPDF = 0;
 
         const tableData = [];
 
@@ -888,33 +1029,47 @@ async function downloadPDF(){
                     keluarGas += keluar;
                 }
 
-                let profit = 0;
-                if (item.kategori === "LPG Warung" || item.kategori === "Warung") {
-                    profit = keluar * (settingHarga.jualWarung - settingHarga.modalWarung);
-                    profitGas += profit;
-                } else if (item.kategori === "LPG Ecer" || item.kategori === "Ecer") {
-                    profit = keluar * (settingHarga.jualEcer - settingHarga.modalEcer);
-                    profitGas += profit;
-                } else if (item.kategori === "Aqua Warung") {
-                    profit = keluar * (settingHarga.jualAquaWarung - settingHarga.modalAquaWarung);
-                    profitAqua += profit;
-                } else if (item.kategori === "Aqua Ecer") {
-                    profit = keluar * (settingHarga.jualAquaEcer - settingHarga.modalAquaEcer);
-                    profitAqua += profit;
+                let itemProfit = 0;
+                let itemOmset = 0;
+                let itemModal = 0;
+                let rincianKey = item.kategori;
+                if (rincianKey === "Warung") rincianKey = "LPG Warung";
+                if (rincianKey === "Ecer") rincianKey = "LPG Ecer";
+
+                if (rincianKey === "LPG Warung") {
+                    itemOmset = keluar * settingHarga.jualWarung;
+                    itemModal = keluar * settingHarga.modalWarung;
+                    itemProfit = itemOmset - itemModal;
+                    profitGas += itemProfit;
+                } else if (rincianKey === "LPG Ecer") {
+                    itemOmset = keluar * settingHarga.jualEcer;
+                    itemModal = keluar * settingHarga.modalEcer;
+                    itemProfit = itemOmset - itemModal;
+                    profitGas += itemProfit;
+                } else if (rincianKey === "Aqua Warung") {
+                    itemOmset = keluar * settingHarga.jualAquaWarung;
+                    itemModal = keluar * settingHarga.modalAquaWarung;
+                    itemProfit = itemOmset - itemModal;
+                    profitAqua += itemProfit;
+                } else if (rincianKey === "Aqua Ecer") {
+                    itemOmset = keluar * settingHarga.jualAquaEcer;
+                    itemModal = keluar * settingHarga.modalAquaEcer;
+                    itemProfit = itemOmset - itemModal;
+                    profitAqua += itemProfit;
                 }
                 
-                let labelKategori = item.kategori;
-                if (labelKategori === "Warung") labelKategori = "LPG Warung";
-                if (labelKategori === "Ecer") labelKategori = "LPG Ecer";
+                totalOmsetPDF += itemOmset;
+                totalModalPDF += itemModal;
 
                 tableData.push([
                     item.tanggal, 
-                    labelKategori, 
+                    rincianKey, 
                     masuk, 
                     keluar, 
-                    currentRunning, 
                     item.oleh || item.username || 'admin', 
-                    `Rp ${profit.toLocaleString("id-ID")}`
+                    `Rp ${itemOmset.toLocaleString("id-ID")}`,
+                    `Rp ${itemModal.toLocaleString("id-ID")}`,
+                    `Rp ${itemProfit.toLocaleString("id-ID")}`
                 ]);
             }
         });
@@ -1004,13 +1159,13 @@ async function downloadPDF(){
         doc.text(`: Rp ${profitAqua.toLocaleString("id-ID")}`, 165, 92);
 
         // Tambah baris total di paling bawah tabel PDF
-        tableData.push(["TOTAL GAS", "-", `+${masukGas}`, `-${keluarGas}`, `Sisa Gas: ${masukGas - keluarGas}`, "-", `Rp ${profitGas.toLocaleString("id-ID")}`]);
-        tableData.push(["TOTAL AQUA", "-", `+${masukAqua}`, `-${keluarAqua}`, `Sisa Aqua: ${masukAqua - keluarAqua}`, "-", `Rp ${profitAqua.toLocaleString("id-ID")}`]);
-        tableData.push(["GRAND TOTAL", "-", `+${totalMasuk}`, `-${totalKeluar}`, `Sisa Total: ${totalStock}`, "-", `Rp ${totalProfit.toLocaleString("id-ID")}`]);
+        tableData.push(["TOTAL GAS", "-", `+${masukGas}`, `-${keluarGas}`, "-", `Rp ${totalOmsetPDF.toLocaleString("id-ID")}`, `Rp ${totalModalPDF.toLocaleString("id-ID")}`, `Rp ${profitGas.toLocaleString("id-ID")}`]);
+        tableData.push(["TOTAL AQUA", "-", `+${masukAqua}`, `-${keluarAqua}`, "-", "-", "-", `Rp ${profitAqua.toLocaleString("id-ID")}`]);
+        tableData.push(["GRAND TOTAL", "-", `+${totalMasuk}`, `-${totalKeluar}`, "-", `Rp ${totalOmsetPDF.toLocaleString("id-ID")}`, `Rp ${totalModalPDF.toLocaleString("id-ID")}`, `Rp ${totalProfit.toLocaleString("id-ID")}`]);
 
         doc.autoTable({
             startY: 112,
-            head: [["Tanggal", "Kategori", "Masuk", "Keluar", "Sisa Stok", "Oleh", "Profit"]],
+            head: [["Tanggal", "Kategori", "Masuk", "Keluar", "Oleh", "Omset", "Modal", "Profit"]],
             body: tableData,
             theme: "striped",
             styles: {
@@ -1048,7 +1203,7 @@ async function downloadPDF(){
                         data.cell.styles.textColor = [239, 68, 68];
                         data.cell.styles.fontStyle = "bold";
                     }
-                    if (data.column.index === 6) { // Profit
+                    if (data.column.index === 7) { // Profit
                         data.cell.styles.textColor = [5, 150, 105];
                         data.cell.styles.fontStyle = "bold";
                     }
@@ -1575,5 +1730,178 @@ async function simpanPasswordBaru() {
     } catch (err) {
         console.error(err);
         showToast("Error koneksi ke server", "error");
+    }
+}
+
+/* ==========================================
+   ANIMASI ROLLING NUMBERS
+========================================== */
+function animateValue(obj, start, end, duration, prefix = "") {
+    if (!obj) return;
+    let startTimestamp = null;
+    const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        const easeProgress = 1 - Math.pow(1 - progress, 4); // easeOutQuart
+        const currentVal = Math.floor(easeProgress * (end - start) + start);
+        obj.innerText = prefix + currentVal.toLocaleString("id-ID");
+        if (progress < 1) {
+            window.requestAnimationFrame(step);
+        } else {
+            obj.innerText = prefix + end.toLocaleString("id-ID");
+        }
+    };
+    window.requestAnimationFrame(step);
+}
+
+/* ==========================================
+   KASIR POS SYSTEM
+========================================== */
+let posCart = [];
+
+function addToCart(kategori) {
+    let harga = 0;
+    if (kategori === 'LPG Warung') harga = settingHarga.jualWarung;
+    if (kategori === 'LPG Ecer') harga = settingHarga.jualEcer;
+    if (kategori === 'Aqua Warung') harga = settingHarga.jualAquaWarung;
+    if (kategori === 'Aqua Ecer') harga = settingHarga.jualAquaEcer;
+
+    const existing = posCart.find(item => item.kategori === kategori);
+    if (existing) {
+        existing.qty += 1;
+    } else {
+        posCart.push({ kategori, harga, qty: 1 });
+    }
+    renderCart();
+    
+    // Add micro-interaction feedback
+    showToast(`${kategori} ditambahkan!`, "success");
+}
+
+function updateCartQty(index, delta) {
+    if (posCart[index]) {
+        posCart[index].qty += delta;
+        if (posCart[index].qty <= 0) {
+            posCart.splice(index, 1);
+        }
+    }
+    renderCart();
+}
+
+function renderCart() {
+    const cartList = document.getElementById('posCartList');
+    if (!cartList) return;
+    
+    if (posCart.length === 0) {
+        cartList.innerHTML = `<div class="empty-cart-state"><i class="ri-shopping-basket-line"></i><p>Keranjang masih kosong</p></div>`;
+        document.getElementById('posSubtotal').textContent = "Rp 0";
+        document.getElementById('posTotalTagihan').textContent = "Rp 0";
+        calculateChange();
+        document.getElementById('btnCheckout').disabled = true;
+        return;
+    }
+
+    let html = '';
+    let total = 0;
+    posCart.forEach((item, index) => {
+        const itemTotal = item.harga * item.qty;
+        total += itemTotal;
+        html += `
+        <div class="cart-item">
+            <div class="cart-item-info">
+                <h4>${item.kategori}</h4>
+                <p>${formatRupiah(item.harga)} x ${item.qty} = <strong>${formatRupiah(itemTotal)}</strong></p>
+            </div>
+            <div class="cart-item-actions">
+                <button class="qty-btn" onclick="updateCartQty(${index}, -1)"><i class="ri-subtract-line"></i></button>
+                <span class="cart-item-qty">${item.qty}</span>
+                <button class="qty-btn" onclick="updateCartQty(${index}, 1)"><i class="ri-add-line"></i></button>
+            </div>
+        </div>
+        `;
+    });
+
+    cartList.innerHTML = html;
+    document.getElementById('posSubtotal').textContent = formatRupiah(total);
+    document.getElementById('posTotalTagihan').textContent = formatRupiah(total);
+    calculateChange();
+    document.getElementById('btnCheckout').disabled = false;
+}
+
+function calculateChange() {
+    let total = posCart.reduce((sum, item) => sum + (item.harga * item.qty), 0);
+    const cashInput = document.getElementById('posCash') ? document.getElementById('posCash').value : 0;
+    const cash = Number(cashInput) || 0;
+    const change = cash - total;
+    const kembalianEl = document.getElementById('posKembalian');
+    if (!kembalianEl) return;
+    
+    if (cash === 0) {
+        kembalianEl.textContent = "Rp 0";
+        kembalianEl.style.color = "var(--text-secondary)";
+    } else if (change < 0) {
+        kembalianEl.textContent = "Kurang " + formatRupiah(Math.abs(change));
+        kembalianEl.style.color = "var(--accent-red)";
+    } else {
+        kembalianEl.textContent = formatRupiah(change);
+        kembalianEl.style.color = "var(--accent-green)";
+    }
+}
+
+async function checkoutPOS() {
+    if (posCart.length === 0) return;
+    
+    let total = posCart.reduce((sum, item) => sum + (item.harga * item.qty), 0);
+    const cash = Number(document.getElementById('posCash').value) || 0;
+    
+    if (cash > 0 && cash < total) {
+        showToast("Uang tunai kurang dari total tagihan!", "warning");
+        return;
+    }
+
+    const btn = document.getElementById('btnCheckout');
+    btn.disabled = true;
+    btn.innerHTML = `<i class="ri-loader-4-line spin"></i> Memproses...`;
+
+    try {
+        // Build local timestamp YYYY-MM-DD
+        const d = new Date();
+        const today = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
+        
+        const token = localStorage.getItem("token");
+
+        // Submit each item sequentially
+        for (const item of posCart) {
+            const payload = {
+                tanggal: today,
+                kategori: item.kategori,
+                masuk: 0,
+                keluar: item.qty
+            };
+
+            await fetch("/add", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify(payload)
+            });
+        }
+
+        posCart = [];
+        document.getElementById('posCash').value = '';
+        renderCart();
+        loadData(); // Refresh dashboard data
+        
+        // Print Receipt Simulator
+        showToast("Transaksi Berhasil! Mencetak Struk... 🖨️", "success");
+
+    } catch (err) {
+        console.error(err);
+        showToast("Gagal melakukan transaksi", "error");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="ri-check-double-line"></i> Bayar Sekarang`;
     }
 }

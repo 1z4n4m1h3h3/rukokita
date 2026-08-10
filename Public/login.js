@@ -167,7 +167,7 @@ if (resetForm) {
         e.preventDefault();
 
         const username = document.getElementById('resetUsername').value.trim();
-        const pin = document.getElementById('resetPin').value;
+        const pin = collectPinValue('resetPinInputContainer');
         const newPassword = document.getElementById('resetNewPassword').value;
         const errorContainer = document.getElementById('reset-error');
         const errorText = document.getElementById('reset-error-text');
@@ -346,4 +346,5 @@ function toggleBtnLoading(btn, isLoading) {
 document.addEventListener('DOMContentLoaded', () => {
     initPinAutoFocus('pinInputContainer');
     initPinAutoFocus('setPinInputContainer');
+    initPinAutoFocus('resetPinInputContainer');
 });

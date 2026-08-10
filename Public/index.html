@@ -52,19 +52,19 @@
                 </div>
 
                 <form id="loginForm">
-                    <div class="input-group">
-                        <label for="username">Username</label>
+                    <div class="input-group floating">
                         <div class="input-wrapper">
                             <i class="ri-user-3-fill input-icon"></i>
-                            <input type="text" id="username" required placeholder="Masukkan username" autocomplete="off">
+                            <input type="text" id="username" required placeholder=" " autocomplete="off">
+                            <label for="username">Username</label>
                         </div>
                     </div>
                     
-                    <div class="input-group">
-                        <label for="password">Password</label>
+                    <div class="input-group floating">
                         <div class="input-wrapper">
                             <i class="ri-lock-password-fill input-icon"></i>
-                            <input type="password" id="password" required placeholder="Masukkan password">
+                            <input type="password" id="password" required placeholder=" ">
+                            <label for="password">Password</label>
                         </div>
                     </div>
                     
@@ -149,44 +149,48 @@
                 <div class="step-back" onclick="goBackToStep1()">
                     <i class="ri-arrow-left-s-line"></i> Kembali
                 </div>
-
-                <div class="pin-icon-box" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
-                    <i class="ri-lock-unlock-fill"></i>
-                </div>
                 
-                <h2>Reset Password</h2>
-                <p class="subtitle">Masukkan PIN 6-digit untuk mereset password</p>
+                <div class="login-header" style="margin-bottom: 20px;">
+                    <img src="ADEQUA-LOGO.png" alt="Logo" class="app-logo">
+                    <h2>Reset Password</h2>
+                    <p class="subtitle">Masukkan Username dan PIN untuk mereset</p>
+                </div>
 
                 <div id="reset-error" class="alert-box alert-error" style="display: none;">
                     <i class="ri-error-warning-fill"></i> <span id="reset-error-text"></span>
                 </div>
 
                 <form id="resetForm" style="margin-top: 20px;">
-                    <div class="input-group">
-                        <label>Username</label>
+                    <div class="input-group floating">
                         <div class="input-wrapper">
                             <i class="ri-user-3-fill input-icon"></i>
-                            <input type="text" id="resetUsername" required placeholder="Username akun">
+                            <input type="text" id="resetUsername" required placeholder=" " autocomplete="off">
+                            <label for="resetUsername">Username</label>
                         </div>
                     </div>
 
                     <div class="input-group">
-                        <label>PIN 6-Digit</label>
-                        <div class="input-wrapper">
-                            <i class="ri-key-2-fill input-icon"></i>
-                            <input type="password" id="resetPin" required placeholder="Masukkan PIN lama" maxlength="6" inputmode="numeric">
+                        <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-color); margin-bottom: 8px;">PIN 6-Digit Lama</label>
+                        <div class="pin-input-container" id="resetPinInputContainer" style="margin-bottom: 20px;">
+                            <input type="password" maxlength="1" class="pin-box" data-index="0" inputmode="numeric" autocomplete="off">
+                            <input type="password" maxlength="1" class="pin-box" data-index="1" inputmode="numeric" autocomplete="off">
+                            <input type="password" maxlength="1" class="pin-box" data-index="2" inputmode="numeric" autocomplete="off">
+                            <div class="pin-separator">—</div>
+                            <input type="password" maxlength="1" class="pin-box" data-index="3" inputmode="numeric" autocomplete="off">
+                            <input type="password" maxlength="1" class="pin-box" data-index="4" inputmode="numeric" autocomplete="off">
+                            <input type="password" maxlength="1" class="pin-box" data-index="5" inputmode="numeric" autocomplete="off">
                         </div>
                     </div>
 
-                    <div class="input-group">
-                        <label>Password Baru</label>
+                    <div class="input-group floating" style="margin-top: 20px;">
                         <div class="input-wrapper">
                             <i class="ri-lock-password-fill input-icon"></i>
-                            <input type="password" id="resetNewPassword" required placeholder="Password baru">
+                            <input type="password" id="resetNewPassword" required placeholder=" ">
+                            <label for="resetNewPassword">Password Baru</label>
                         </div>
                     </div>
 
-                    <button type="submit" class="btn-login" id="btnReset" style="background: var(--gradient-primary);">
+                    <button type="submit" class="btn-login" id="btnReset">
                         <span class="btn-text">Reset Password <i class="ri-check-line"></i></span>
                         <span class="btn-loader" style="display:none;"><i class="ri-loader-4-line spin"></i> Mereset...</span>
                     </button>

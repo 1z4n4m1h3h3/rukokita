@@ -28,11 +28,12 @@ body {
     display: flex;
     width: 100%;
     max-width: 1100px;
-    background: var(--bg-card);
-    backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--border-subtle);
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
     border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-card);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
     overflow: hidden;
     position: relative;
     z-index: 10;
@@ -95,7 +96,10 @@ body {
 ========================= */
 .login-container {
     flex: 1;
-    background: var(--bg-card-solid);
+    background: rgba(255, 255, 255, 0.9); /* Pure white to match logo background */
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-left: 1px solid rgba(255, 255, 255, 0.5);
     padding: 60px 50px;
     position: relative;
     z-index: 10;
@@ -109,14 +113,37 @@ body {
 ========================= */
 .login-step {
     display: none;
-    animation: stepFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .login-step.active {
     display: block;
+    animation: stepFadeIn 0.4s ease forwards;
 }
 
 @keyframes stepFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Staggered Animations for Elements inside Active Step */
+.login-step.active > div,
+.login-step.active > h2,
+.login-step.active > p,
+.login-step.active > form {
+    animation: slideUpStagger 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0;
+}
+
+.login-step.active > *:nth-child(1) { animation-delay: 0.05s; }
+.login-step.active > *:nth-child(2) { animation-delay: 0.1s; }
+.login-step.active > *:nth-child(3) { animation-delay: 0.15s; }
+.login-step.active > *:nth-child(4) { animation-delay: 0.2s; }
+.login-step.active > *:nth-child(5) { animation-delay: 0.25s; }
+.login-step.active > *:nth-child(6) { animation-delay: 0.3s; }
+.login-step.active > *:nth-child(7) { animation-delay: 0.35s; }
+.login-step.active > *:nth-child(8) { animation-delay: 0.4s; }
+
+@keyframes slideUpStagger {
     from {
         opacity: 0;
         transform: translateY(20px);
@@ -138,6 +165,7 @@ body {
 .login-header .app-logo {
     width: 100%;
     max-width: 180px;
+    mix-blend-mode: multiply; /* Removes the white background of the logo */
     height: auto;
     object-fit: contain;
     margin-bottom: 24px;
@@ -224,7 +252,7 @@ h2 {
 }
 
 /* =========================
-   INPUT GROUPS
+   INPUT GROUPS & FLOATING LABELS
 ========================= */
 .input-group {
     margin-bottom: 20px;
@@ -239,6 +267,25 @@ h2 {
     letter-spacing: 0.2px;
 }
 
+/* Floating Label Specifics */
+.input-group.floating .input-wrapper {
+    position: relative;
+}
+
+.input-group.floating label {
+    position: absolute;
+    left: 48px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 500;
+    pointer-events: none;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    margin: 0;
+    z-index: 2;
+}
+
 .input-wrapper {
     position: relative;
     display: flex;
@@ -251,18 +298,33 @@ h2 {
     color: var(--text-muted);
     font-size: 18px;
     transition: color 0.3s;
-    z-index: 1;
+    z-index: 2;
+}
+
+.input-group.floating input {
+    padding: 24px 16px 8px 48px; /* Adjusted for floating label */
+}
+
+/* Float the label on focus or when NOT empty (:placeholder-shown checks if placeholder is visible) */
+.input-group.floating input:focus ~ label,
+.input-group.floating input:not(:placeholder-shown) ~ label,
+.input-group.floating input:-webkit-autofill ~ label {
+    top: 14px;
+    font-size: 11px;
+    color: var(--accent-blue);
+    font-weight: 700;
 }
 
 .input-group input {
     width: 100%;
     padding: 16px 16px 16px 48px;
-    background: var(--bg-input);
-    border: 1px solid var(--border-medium);
+    background: #f8fafc;
+    border: 1px solid rgba(255, 255, 255, 0.8);
     border-radius: 12px;
     font-size: 14px;
     color: var(--text-primary);
     outline: none;
+    box-shadow: inset 4px 4px 8px rgba(148, 163, 184, 0.25), inset -4px -4px 8px rgba(255, 255, 255, 0.9);
     transition: var(--transition);
 }
 
@@ -270,10 +332,16 @@ h2 {
     color: var(--text-muted);
 }
 
+@keyframes pulseGlow {
+    0% { box-shadow: 0 0 0 0px rgba(37, 99, 235, 0.4), inset 6px 6px 10px rgba(148, 163, 184, 0.3), inset -6px -6px 10px rgba(255, 255, 255, 1); }
+    50% { box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1), inset 6px 6px 10px rgba(148, 163, 184, 0.3), inset -6px -6px 10px rgba(255, 255, 255, 1); }
+    100% { box-shadow: 0 0 0 0px rgba(37, 99, 235, 0.4), inset 6px 6px 10px rgba(148, 163, 184, 0.3), inset -6px -6px 10px rgba(255, 255, 255, 1); }
+}
+
 .input-group input:focus {
-    border-color: var(--accent-blue);
-    background: var(--bg-card);
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+    border-color: rgba(255, 255, 255, 1);
+    background: #f1f5f9;
+    animation: pulseGlow 2s infinite;
 }
 
 .input-group input:focus ~ .input-icon,
@@ -299,29 +367,29 @@ h2 {
     font-size: 24px;
     font-weight: 700;
     color: var(--text-primary);
-    background: var(--bg-input);
-    border: 1px solid var(--border-medium);
+    background: #f8fafc;
+    border: 1px solid rgba(255, 255, 255, 0.8);
     border-radius: 14px;
     outline: none;
+    box-shadow: inset 4px 4px 8px rgba(148, 163, 184, 0.25), inset -4px -4px 8px rgba(255, 255, 255, 0.9);
     transition: var(--transition);
     font-family: 'Inter', monospace;
     caret-color: var(--accent-blue);
 }
 
 .pin-box:focus {
-    border-color: var(--accent-blue);
-    background: var(--bg-card);
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+    border-color: rgba(255, 255, 255, 1);
+    background: #f1f5f9;
+    animation: pulseGlow 2s infinite;
     transform: translateY(-2px);
 }
 
 #step3 .pin-box:focus {
-    border-color: var(--accent-green);
-    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+    box-shadow: inset 6px 6px 10px rgba(16, 185, 129, 0.2), inset -6px -6px 10px rgba(255, 255, 255, 1);
 }
 
 .pin-box.filled {
-    border-color: var(--border-subtle);
+    border-color: rgba(255, 255, 255, 1);
 }
 
 .pin-separator {
@@ -338,7 +406,7 @@ h2 {
     width: 100%;
     padding: 16px;
     background: var(--gradient-blue);
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.4);
     border-radius: 12px;
     color: white;
     font-size: 15px;
@@ -351,15 +419,22 @@ h2 {
     gap: 8px;
     position: relative;
     overflow: hidden;
+    box-shadow: 6px 6px 14px rgba(37, 99, 235, 0.25), 
+               -4px -4px 10px rgba(255, 255, 255, 0.8),
+               inset 1px 1px 2px rgba(255, 255, 255, 0.4);
 }
 
 .btn-login:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-glow-blue);
+    transform: translateY(-3px);
+    box-shadow: 8px 8px 20px rgba(37, 99, 235, 0.35), 
+               -6px -6px 12px rgba(255, 255, 255, 0.9),
+               inset 1px 1px 2px rgba(255, 255, 255, 0.5);
 }
 
 .btn-login:active {
-    transform: translateY(0);
+    transform: translateY(1px);
+    box-shadow: 2px 2px 5px rgba(37, 99, 235, 0.3), 
+               -2px -2px 5px rgba(255, 255, 255, 0.7);
 }
 
 .btn-set-pin {
@@ -436,20 +511,38 @@ h2 {
     }
     
     .login-split-wrapper {
-        max-width: 420px;
+        max-width: 100%;
+        width: 100%;
+        margin: 0;
+        border-radius: var(--radius-lg);
     }
     
     .login-container {
-        padding: 40px 30px;
+        padding: 40px 15px;
+        width: 100%;
+    }
+
+    .pin-input-container {
+        gap: 4px;
+        justify-content: center;
+        width: 100%;
     }
 
     .pin-box {
-        width: 42px;
-        height: 52px;
-        font-size: 20px;
+        width: 100%;
+        height: 48px;
+        font-size: 18px;
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: 42px;
+        padding: 0;
+    }
+
+    .pin-separator {
+        margin: 0 2px;
     }
 
     h2 {
-        font-size: 24px;
+        font-size: 22px;
     }
 }
