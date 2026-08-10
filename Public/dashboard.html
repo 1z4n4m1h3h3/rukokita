@@ -90,6 +90,10 @@
                 <i class="ri-history-fill"></i> Log Aktivitas
             </div>
 
+            <div class="menu-item" id="btnInstallPwaDashboard" style="display: none; background: var(--gradient-blue); color: white; margin-top: 10px;">
+                <i class="ri-download-cloud-2-fill"></i> Install PWA
+            </div>
+
             <div class="menu-item logout-item" onclick="bukaModalLogout()" style="cursor: pointer;">
                 <i class="ri-logout-box-r-fill"></i> Logout
             </div>
@@ -1032,6 +1036,30 @@
                 navigator.serviceWorker.register('/sw.js')
                     .then(registration => console.log('ServiceWorker registration successful with scope: ', registration.scope))
                     .catch(err => console.log('ServiceWorker registration failed: ', err));
+            });
+        }
+
+        let deferredPromptDashboard;
+        const installBtnDashboard = document.getElementById('btnInstallPwaDashboard');
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPromptDashboard = e;
+            if (installBtnDashboard) {
+                installBtnDashboard.style.display = 'flex';
+            }
+        });
+
+        if (installBtnDashboard) {
+            installBtnDashboard.addEventListener('click', async () => {
+                if (deferredPromptDashboard) {
+                    deferredPromptDashboard.prompt();
+                    const { outcome } = await deferredPromptDashboard.userChoice;
+                    if (outcome === 'accepted') {
+                        installBtnDashboard.style.display = 'none';
+                    }
+                    deferredPromptDashboard = null;
+                }
             });
         }
     </script>
