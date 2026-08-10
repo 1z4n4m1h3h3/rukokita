@@ -19,6 +19,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_123";
 /* =========================
 MIDDLEWARE
 ========================= */
+app.set('trust proxy', 1); // Wajib untuk Vercel & express-rate-limit
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, "Public")));
