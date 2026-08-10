@@ -797,7 +797,7 @@ tr:hover {
 }
 .choices__inner {
     background: var(--bg-card) !important;
-    border: 1px solid var(--border-color) !important;
+    border: 1px solid var(--border-subtle) !important;
     border-radius: 8px !important;
     padding: 6.5px 12px !important;
     min-height: auto !important;
@@ -808,23 +808,26 @@ tr:hover {
 }
 .choices[data-type*="select-one"]::after {
     border: none !important;
-    content: '\f111' !important; /* Remixicon arrow-down-s-line */
-    font-family: 'remixicon' !important;
-    font-size: 16px;
-    color: var(--text-secondary);
+    content: '' !important;
+    width: 16px !important;
+    height: 16px !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24'%3E%3Cpath fill='none' d='M0 0h24v24H0z'/%3E%3Cpath d='M12 13.172l4.95-4.95 1.414 1.414L12 16 5.636 9.636 7.05 8.222z' fill='rgba(100,116,139,1)'/%3E%3C/svg%3E") !important;
+    background-size: cover !important;
+    background-repeat: no-repeat !important;
     right: 12px !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
     margin-top: 0 !important;
     position: absolute;
     pointer-events: none;
+    transition: transform 0.2s ease;
 }
 .choices[data-type*="select-one"].is-open::after {
     transform: translateY(-50%) rotate(180deg) !important;
 }
 .choices__list--dropdown {
-    background: var(--bg-card) !important;
-    border: 1px solid var(--border-color) !important;
+    background: var(--bg-card-solid) !important;
+    border: 1px solid var(--border-subtle) !important;
     border-radius: 8px !important;
     box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
     margin-top: 4px !important;
