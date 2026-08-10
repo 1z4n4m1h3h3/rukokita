@@ -2022,13 +2022,15 @@ async function checkoutPOS() {
             });
         }
 
+        // Print Receipt (PDF)
+        const kembalian = cash > 0 ? (cash - total) : 0;
+        cetakStrukPOS([...posCart], cash, kembalian, total);
+        showToast("Transaksi Berhasil! Mengunduh Struk... 🖨️", "success");
+
         posCart = [];
         document.getElementById('posCash').value = '';
         renderCart();
         loadData(); // Refresh dashboard data
-        
-        // Print Receipt Simulator
-        showToast("Transaksi Berhasil! Mencetak Struk... 🖨️", "success");
 
     } catch (err) {
         console.error(err);
@@ -2037,4 +2039,95 @@ async function checkoutPOS() {
         btn.disabled = false;
         btn.innerHTML = `<i class="ri-check-double-line"></i> Bayar Sekarang`;
     }
+}
+
+/* ==========================================
+   CETAK STRUK POS (PDF)
+========================================== */
+function cetakStrukPOS(cart, cash, kembalian, total) {
+    if (typeof window.jspdf === 'undefined') {
+        showToast("Gagal memuat sistem PDF", "error");
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    
+    // Asumsi ukuran kertas kasir thermal (lebar 80mm). Panjang dinamis sesuai isi.
+    const pageHeight = 80 + (cart.length * 10);
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: [80, pageHeight] });
+
+    let y = 10;
+    
+    // Header
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("PANGKALAN ADEQUA", 40, y, { align: "center" });
+    
+    y += 5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text("Distributor Gas & Aqua Galon", 40, y, { align: "center" });
+    
+    y += 8;
+    // Garis putus-putus
+    doc.setLineDashPattern([1, 1], 0);
+    doc.line(5, y, 75, y);
+    doc.setLineDashPattern([], 0); // reset
+    
+    y += 5;
+    const now = new Date();
+    doc.text(`Tgl : ${now.toLocaleDateString("id-ID")} ${now.toLocaleTimeString("id-ID")}`, 5, y);
+    doc.text(`Kasir: Admin`, 75, y, { align: "right" });
+    
+    y += 4;
+    doc.setLineDashPattern([1, 1], 0);
+    doc.line(5, y, 75, y);
+    doc.setLineDashPattern([], 0); // reset
+    
+    y += 6;
+    
+    // Item List
+    cart.forEach(item => {
+        doc.setFont("helvetica", "bold");
+        doc.text(item.kategori, 5, y);
+        y += 4;
+        doc.setFont("helvetica", "normal");
+        const priceText = `${item.qty} x ${item.harga.toLocaleString("id-ID")}`;
+        const totalItemText = (item.qty * item.harga).toLocaleString("id-ID");
+        doc.text(priceText, 5, y);
+        doc.text(totalItemText, 75, y, { align: "right" });
+        y += 6;
+    });
+    
+    doc.setLineDashPattern([1, 1], 0);
+    doc.line(5, y, 75, y);
+    doc.setLineDashPattern([], 0); // reset
+    
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    doc.text("Total Tagihan", 5, y);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Rp ${total.toLocaleString("id-ID")}`, 75, y, { align: "right" });
+    
+    y += 5;
+    doc.setFont("helvetica", "normal");
+    doc.text("Tunai (Cash)", 5, y);
+    doc.text(`Rp ${cash.toLocaleString("id-ID")}`, 75, y, { align: "right" });
+    
+    y += 5;
+    doc.text("Kembalian", 5, y);
+    doc.text(`Rp ${kembalian.toLocaleString("id-ID")}`, 75, y, { align: "right" });
+    
+    y += 8;
+    doc.setLineDashPattern([1, 1], 0);
+    doc.line(5, y, 75, y);
+    doc.setLineDashPattern([], 0); // reset
+    
+    y += 6;
+    doc.setFont("helvetica", "italic");
+    doc.text("Terima Kasih!", 40, y, { align: "center" });
+    
+    // Save PDF
+    const filename = `Struk_ADEQUA_${now.getTime()}.pdf`;
+    doc.save(filename);
 }
