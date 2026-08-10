@@ -164,7 +164,7 @@ function showPage(pageId){
         return;
     }
 
-    const pages = ["dashboardPage", "inputPage", "settingPage", "logsPage"];
+    const pages = ["dashboardPage", "inputPage", "settingPage", "logsPage", "posPage"];
     pages.forEach(page => {
         const el = document.getElementById(page);
         if (el) {

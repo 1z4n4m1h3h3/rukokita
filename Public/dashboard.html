@@ -301,9 +301,14 @@
 
         <!-- ========== POS KASIR PAGE ========== -->
         <div id="posPage" class="page-content" style="display:none;">
-            <div class="navbar">
-                <h1>Kasir POS <i class="ri-shopping-cart-2-fill" style="color: var(--accent-blue);"></i></h1>
-                <span>Sistem Penjualan Point of Sale Terintegrasi</span>
+            <div class="navbar" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1>Kasir POS <i class="ri-shopping-cart-2-fill" style="color: var(--accent-blue);"></i></h1>
+                    <span>Sistem Penjualan Point of Sale Terintegrasi</span>
+                </div>
+                <button onclick="showPage('dashboardPage')" style="padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--bg-card); color: var(--text-primary); font-family: var(--app-font); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+                    <i class="ri-arrow-left-line"></i> Kembali
+                </button>
             </div>
 
             <div class="pos-layout">
