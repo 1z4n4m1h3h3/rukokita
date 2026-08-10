@@ -74,6 +74,9 @@
             <div class="menu-item" onclick="showPage('settingPage')">
                 <i class="ri-settings-4-fill"></i> Pengaturan
             </div>
+            <div class="menu-item" onclick="showPage('expensePage')">
+                <i class="ri-money-dollar-circle-fill"></i> Pengeluaran
+            </div>
             <div class="menu-item" id="menuLogs" onclick="showPage('logsPage')">
                 <i class="ri-history-fill"></i> Log Aktivitas
             </div>
@@ -227,7 +230,16 @@
                 </div>
                 <div class="card">
                     <div class="card-header">
-                        <span>Total Profit</span>
+                        <span>Total Pengeluaran</span>
+                        <div class="card-icon" style="background: #fee2e2; color: #ef4444; border-radius: 8px; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;">
+                            <i class="ri-wallet-3-fill" style="font-size: 20px;"></i>
+                        </div>
+                    </div>
+                    <h2 id="totalPengeluaran" style="color: #ef4444;">Rp 0</h2>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span>Net Profit (Bersih)</span>
                         <div class="card-icon" style="background: #fef3c7; color: #f59e0b; border-radius: 8px; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <rect x="2" y="5" width="20" height="14" rx="3" fill="url(#totalProfitGrad)"/>
@@ -287,11 +299,19 @@
                         </tbody>
                         <tfoot style="font-weight: bold; background: rgba(0,0,0,0.02);">
                             <tr>
-                                <td>TOTAL KESELURUHAN</td>
+                                <td>TOTAL KESELURUHAN (GROSS)</td>
                                 <td id="rincianTotalQty">0</td>
                                 <td id="rincianTotalOmset">Rp 0</td>
                                 <td id="rincianTotalModal">Rp 0</td>
                                 <td id="rincianTotalProfit" style="color: #22c55e;">Rp 0</td>
+                            </tr>
+                            <tr style="background: rgba(239, 68, 68, 0.05); color: #ef4444;">
+                                <td colspan="4" style="text-align: right;">TOTAL PENGELUARAN</td>
+                                <td id="rincianTotalPengeluaran">- Rp 0</td>
+                            </tr>
+                            <tr style="background: rgba(34, 197, 94, 0.1); color: #16a34a; font-size: 15px;">
+                                <td colspan="4" style="text-align: right;">NET PROFIT (BERSIH)</td>
+                                <td id="rincianNetProfit">Rp 0</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -448,6 +468,55 @@
                     <tbody id="dataTable"></tbody>
                 </table>
                 <div id="pagination"></div>
+            </div>
+        </div>
+
+        <!-- ========== PENGELUARAN PAGE ========== -->
+        <div id="expensePage" class="page-content" style="display:none;">
+            <div class="navbar">
+                <h1>Catat Pengeluaran Operasional</h1>
+                <span>Pencatatan pengeluaran (Gaji, Listrik, Bensin, dll) untuk menghitung Profit Bersih</span>
+            </div>
+
+            <div class="form-card" style="margin-top: 20px;">
+                <input type="date" id="expenseTanggal">
+                <select id="expenseKategori" style="cursor: pointer;">
+                    <option value="Gaji Karyawan">Gaji Karyawan</option>
+                    <option value="Tagihan Listrik">Tagihan Listrik</option>
+                    <option value="Bensin / Transportasi">Bensin / Transportasi</option>
+                    <option value="Sewa Tempat">Sewa Tempat</option>
+                    <option value="Konsumsi / Uang Makan">Konsumsi / Uang Makan</option>
+                    <option value="Perawatan Kendaraan">Perawatan Kendaraan</option>
+                    <option value="Lainnya">Lainnya</option>
+                </select>
+                <input type="number" id="expenseJumlah" placeholder="Jumlah (Rp)">
+                <input type="text" id="expenseKeterangan" placeholder="Keterangan (Opsional)">
+                <button onclick="simpanExpense()" style="background: var(--gradient-red);">
+                    <i class="ri-save-line"></i> Simpan
+                </button>
+            </div>
+
+            <div class="table-card" style="margin-top: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="color: var(--text-primary); margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; font-weight: 600;">
+                        <i class="ri-file-list-3-fill" style="color: #ef4444;"></i> Riwayat Pengeluaran
+                    </h3>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Kategori</th>
+                            <th>Keterangan</th>
+                            <th>Jumlah</th>
+                            <th>Oleh</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expenseTableBody">
+                        <tr><td colspan="6" style="text-align:center;">Memuat data...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 

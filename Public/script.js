@@ -164,7 +164,7 @@ function showPage(pageId){
         return;
     }
 
-    const pages = ["dashboardPage", "inputPage", "settingPage", "logsPage", "posPage"];
+    const pages = ["dashboardPage", "inputPage", "settingPage", "logsPage", "posPage", "expensePage"];
     pages.forEach(page => {
         const el = document.getElementById(page);
         if (el) {
@@ -207,6 +207,14 @@ function showPage(pageId){
 
     if(pageId === "inputPage"){
         initFilterDates(); // Pastikan tanggal terisi saat pindah ke halaman input
+    }
+    
+    if(pageId === "expensePage"){
+        initFilterDates();
+        if (document.getElementById("expenseTanggal")) {
+            document.getElementById("expenseTanggal").value = new Date().toISOString().split('T')[0];
+        }
+        loadExpenses();
     }
     
     // Auto-close sidebar after clicking a menu item (all screen sizes)
@@ -279,6 +287,95 @@ async function simpan(){
 }
 
 /* =========================
+   CRUD PENGELUARAN (EXPENSES)
+========================= */
+async function loadExpenses() {
+    try {
+        const res = await fetch("/api/expenses");
+        if (res.ok) {
+            const data = await res.json();
+            const tbody = document.getElementById("expenseTableBody");
+            if (!tbody) return;
+            
+            let html = "";
+            if (data.length === 0) {
+                html = '<tr><td colspan="6" style="text-align:center; color:#94a3b8;">Belum ada pengeluaran tercatat.</td></tr>';
+            } else {
+                data.forEach(item => {
+                    html += `
+                        <tr>
+                            <td>${item.tanggal}</td>
+                            <td><span class="badge" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2);">${item.kategori}</span></td>
+                            <td>${item.keterangan || '-'}</td>
+                            <td style="color: #ef4444; font-weight: bold;">Rp ${item.jumlah.toLocaleString('id-ID')}</td>
+                            <td><span class="badge-user">${item.oleh || 'admin'}</span></td>
+                            <td>
+                                <button class="delete-btn" onclick="hapusExpense(${item.id})" style="background: #ef4444; border:none; color:#fff; padding:4px 8px; border-radius:4px; cursor:pointer;" title="Hapus">
+                                    <i class="ri-delete-bin-line"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+            tbody.innerHTML = html;
+        }
+    } catch (err) {
+        console.error("Gagal load expenses:", err);
+    }
+}
+
+async function simpanExpense() {
+    const tanggal = document.getElementById("expenseTanggal").value;
+    const kategori = document.getElementById("expenseKategori").value;
+    const jumlah = parseInt(document.getElementById("expenseJumlah").value) || 0;
+    const keterangan = document.getElementById("expenseKeterangan").value;
+
+    if (!tanggal || !kategori || jumlah <= 0) {
+        showToast("Data pengeluaran tidak lengkap atau jumlah 0! ❌", "warning");
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/expenses/add", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tanggal, kategori, jumlah, keterangan })
+        });
+
+        if (res.ok) {
+            showToast("Pengeluaran berhasil dicatat! 💸", "success");
+            document.getElementById("expenseJumlah").value = "";
+            document.getElementById("expenseKeterangan").value = "";
+            loadExpenses();
+            if (document.getElementById("dashboardPage").style.display === "block") {
+                loadData();
+            }
+        } else {
+            showToast("Gagal menyimpan pengeluaran.", "error");
+        }
+    } catch (err) {
+        showToast("Terjadi kesalahan jaringan.", "error");
+    }
+}
+
+async function hapusExpense(id) {
+    if (confirm("Yakin ingin menghapus data pengeluaran ini? 🗑️")) {
+        try {
+            const res = await fetch(`/api/expenses/delete/${id}`, { method: "POST" });
+            if (res.ok) {
+                showToast("Pengeluaran berhasil dihapus! 🗑️", "success");
+                loadExpenses();
+            } else {
+                showToast("Gagal hapus pengeluaran", "error");
+            }
+        } catch (err) {
+            showToast("Error koneksi saat menghapus data.", "error");
+        }
+    }
+}
+
+/* =========================
    LOAD DATA UTAMA & DASHBOARD
 ========================= */
 function muatDataDanGrafik() {
@@ -287,8 +384,15 @@ function muatDataDanGrafik() {
 
 async function loadData(){
     try {
-        const res = await fetch("/data");
-        let allData = await res.json();
+        const [resData, resExpenses] = await Promise.all([
+            fetch("/data"),
+            fetch("/api/expenses")
+        ]);
+        let allData = await resData.json();
+        let allExpenses = [];
+        if (resExpenses.ok) {
+            allExpenses = await resExpenses.json();
+        }
 
         // 1. Dapatkan Nilai Filter
         const filterSelect = document.getElementById("dashboardTimeFilter");
@@ -297,8 +401,29 @@ async function loadData(){
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         
-        // 2. Filter Data
+        // 2. Filter Data Stock
         let data = allData.filter(item => {
+            if (filterValue === "all") return true;
+            const itemDate = new Date(item.tanggal);
+            const dateOnly = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
+            
+            if (filterValue === "today") {
+                return dateOnly.getTime() === today.getTime();
+            } else if (filterValue === "this_week") {
+                const dayOfWeek = today.getDay();
+                const startOfWeek = new Date(today);
+                startOfWeek.setDate(today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)); 
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6);
+                return dateOnly >= startOfWeek && dateOnly <= endOfWeek;
+            } else if (filterValue === "this_month") {
+                return dateOnly.getMonth() === today.getMonth() && dateOnly.getFullYear() === today.getFullYear();
+            }
+            return true;
+        });
+
+        // 3. Filter Data Pengeluaran
+        let filteredExpenses = allExpenses.filter(item => {
             if (filterValue === "all") return true;
             const itemDate = new Date(item.tanggal);
             const dateOnly = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
@@ -447,7 +572,12 @@ async function loadData(){
 
         const totalStockGas = totalMasukGas - totalKeluarGas;
         const totalStockAqua = totalMasukAqua - totalKeluarAqua;
-        const totalProfit = profitGas + profitAqua;
+        
+        let totalPengeluaran = 0;
+        filteredExpenses.forEach(e => totalPengeluaran += e.jumlah);
+
+        const grossProfit = profitGas + profitAqua;
+        const netProfit = grossProfit - totalPengeluaran;
 
         const dataTableEl = document.getElementById("dataTable");
         if(dataTableEl) dataTableEl.innerHTML = html;
@@ -456,7 +586,8 @@ async function loadData(){
         if(document.getElementById("totalStockAqua")) animateValue(document.getElementById("totalStockAqua"), 0, totalStockAqua, 1200);
         if(document.getElementById("profitGas")) animateValue(document.getElementById("profitGas"), 0, profitGas, 1200, "Rp ");
         if(document.getElementById("profitAqua")) animateValue(document.getElementById("profitAqua"), 0, profitAqua, 1200, "Rp ");
-        if(document.getElementById("totalProfit")) animateValue(document.getElementById("totalProfit"), 0, totalProfit, 1200, "Rp ");
+        if(document.getElementById("totalPengeluaran")) animateValue(document.getElementById("totalPengeluaran"), 0, totalPengeluaran, 1200, "Rp ");
+        if(document.getElementById("totalProfit")) animateValue(document.getElementById("totalProfit"), 0, netProfit, 1200, "Rp ");
         
         if(document.getElementById("totalOmset")) animateValue(document.getElementById("totalOmset"), 0, totalOmsetGlobal, 1200, "Rp ");
         if(document.getElementById("totalModal")) animateValue(document.getElementById("totalModal"), 0, totalModalGlobal, 1200, "Rp ");
@@ -482,7 +613,9 @@ async function loadData(){
             document.getElementById("rincianTotalQty").innerText = totalQty;
             document.getElementById("rincianTotalOmset").innerText = "Rp " + totalOmsetGlobal.toLocaleString("id-ID");
             document.getElementById("rincianTotalModal").innerText = "Rp " + totalModalGlobal.toLocaleString("id-ID");
-            document.getElementById("rincianTotalProfit").innerText = "Rp " + totalProfit.toLocaleString("id-ID");
+            document.getElementById("rincianTotalProfit").innerText = "Rp " + grossProfit.toLocaleString("id-ID");
+            if(document.getElementById("rincianTotalPengeluaran")) document.getElementById("rincianTotalPengeluaran").innerText = "- Rp " + totalPengeluaran.toLocaleString("id-ID");
+            if(document.getElementById("rincianNetProfit")) document.getElementById("rincianNetProfit").innerText = "Rp " + netProfit.toLocaleString("id-ID");
         }
 
         renderPagination(data.length);

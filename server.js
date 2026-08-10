@@ -154,7 +154,18 @@ db.serialize(() => {
             deskripsi TEXT NOT NULL
         )
     `, (err) => {
-        if (!err) console.log("📝 Database Log Aktivitas Siap! ✅");
+    // 5. Tabel Pengeluaran (Expenses)
+    db.run(`
+        CREATE TABLE IF NOT EXISTS expenses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tanggal TEXT NOT NULL,
+            kategori TEXT NOT NULL,
+            jumlah INTEGER NOT NULL DEFAULT 0,
+            keterangan TEXT,
+            oleh TEXT DEFAULT 'admin'
+        )
+    `, (err) => {
+        if (!err) console.log("💸 Database Pengeluaran Siap! ✅");
     });
 });
 
@@ -639,6 +650,51 @@ app.post("/edit/:id", verifyToken, (req, res) => {
                 res.json({ success: true });
             }
         );
+    });
+});
+
+/* ==========================================
+   API ENDPOINTS: PENGELUARAN (EXPENSES)
+========================================== */
+app.get("/api/expenses", verifyToken, (req, res) => {
+    db.all(`SELECT * FROM expenses ORDER BY tanggal DESC, id DESC`, [], (err, rows) => {
+        if (err) return res.status(500).json({ success: false, message: "Gagal mengambil data pengeluaran" });
+        res.json(rows);
+    });
+});
+
+app.post("/api/expenses/add", verifyToken, (req, res) => {
+    const { tanggal, kategori, jumlah, keterangan } = req.body;
+    const numJumlah = Number(jumlah) || 0;
+    const olehUser = req.user.username;
+
+    if (!tanggal || !kategori || numJumlah <= 0) {
+        return res.status(400).json({ success: false, message: "Data pengeluaran tidak valid!" });
+    }
+
+    db.run(
+        `INSERT INTO expenses (tanggal, kategori, jumlah, keterangan, oleh) VALUES (?, ?, ?, ?, ?)`,
+        [tanggal, kategori, numJumlah, keterangan, olehUser],
+        function (err) {
+            if (err) return res.status(500).json({ success: false, message: "Gagal input pengeluaran" });
+            catatLog(olehUser, "INPUT EXPENSE", `Menambah pengeluaran [${kategori}]: Rp ${numJumlah} pada ${tanggal}`);
+            res.json({ success: true, id: this.lastID });
+        }
+    );
+});
+
+app.post("/api/expenses/delete/:id", verifyToken, (req, res) => {
+    const id = req.params.id;
+    const olehUser = req.user.username;
+
+    db.get(`SELECT tanggal, kategori, jumlah FROM expenses WHERE id = ?`, [id], (searchErr, row) => {
+        if (searchErr || !row) return res.status(404).json({ success: false, message: "Data tidak ditemukan" });
+
+        db.run(`DELETE FROM expenses WHERE id = ?`, [id], function (err) {
+            if (err) return res.status(500).json({ success: false, message: "Gagal menghapus pengeluaran" });
+            catatLog(olehUser, "DELETE EXPENSE", `Menghapus pengeluaran [${row.kategori}]: Rp ${row.jumlah} tanggal ${row.tanggal}`);
+            res.json({ success: true });
+        });
     });
 });
 
