@@ -1250,10 +1250,19 @@ tr:hover {
         flex-direction: row !important;
         width: 100% !important;
         height: 100% !important;
-        gap: 0 !important;
+        gap: 10px !important;
         margin: 0 !important;
         align-items: center !important;
-        justify-content: space-around !important;
+        justify-content: flex-start !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        white-space: nowrap !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding: 0 5px !important;
+    }
+    
+    .sidebar .menu::-webkit-scrollbar {
+        display: none !important;
     }
 
     .sidebar .menu-item {
@@ -1261,7 +1270,7 @@ tr:hover {
         justify-content: center !important;
         align-items: center !important;
         gap: 4px !important;
-        padding: 8px 0 !important;
+        padding: 8px 12px !important;
         height: 100% !important;
         font-size: 10px !important;
         color: var(--text-secondary) !important;
@@ -1269,8 +1278,9 @@ tr:hover {
         border-radius: 0 !important;
         box-shadow: none !important;
         transform: none !important;
-        flex: 1 !important;
+        flex: 0 0 auto !important; /* Jangan mengecil, biarkan scroll */
         position: relative !important;
+        min-width: 65px !important;
     }
 
     .sidebar .menu-item i {
@@ -1359,9 +1369,8 @@ tr:hover {
 }
 
 @keyframes pulseLogo {
-    0% { transform: scale(1); opacity: 0.9; }
-    50% { transform: scale(1.05); opacity: 1; drop-shadow: 0 0 20px rgba(37,99,235,0.4); }
-    100% { transform: scale(1); opacity: 0.9; }
+    0%, 100% { transform: scale(0.95); opacity: 0.2; }
+    50% { transform: scale(1.05); opacity: 1; drop-shadow: 0 0 25px rgba(37,99,235,0.8); }
 }
 
 @keyframes fadeText {
