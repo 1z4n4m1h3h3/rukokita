@@ -264,7 +264,22 @@ app.post("/api/login", loginLimiter, (req, res) => {
         if (!row) return res.status(401).json({ success: false, message: "Username atau Password salah!" });
 
         try {
-            const match = await bcrypt.compare(password, row.password);
+            let match = false;
+            
+            // Deteksi apakah password lama masih plain-text (tidak diawali $2)
+            if (row.password && !row.password.startsWith('$2')) {
+                if (password === row.password) {
+                    match = true;
+                    // Auto-upgrade ke bcrypt secara diam-diam
+                    const newHash = await bcrypt.hash(password, 10);
+                    db.run(`UPDATE users SET password = ? WHERE id = ?`, [newHash, row.id], (err) => {
+                        if (err) console.error("Gagal auto-upgrade password:", err);
+                    });
+                }
+            } else {
+                match = await bcrypt.compare(password, row.password);
+            }
+
             if (match) {
                 res.json({
                     success: true,
