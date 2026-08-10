@@ -1318,3 +1318,95 @@ tr:hover {
         width: 100% !important;
     }
 }
+
+/* =========================
+   SPLASH SCREEN
+========================= */
+.splash-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: var(--bg-primary);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.8s ease-out, visibility 0.8s ease-out;
+}
+
+.splash-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.splash-logo {
+    width: 180px;
+    height: auto;
+    animation: pulseLogo 2s infinite ease-in-out;
+    margin-bottom: 20px;
+}
+
+.splash-text {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    animation: fadeText 2s infinite;
+}
+
+@keyframes pulseLogo {
+    0% { transform: scale(1); opacity: 0.9; }
+    50% { transform: scale(1.05); opacity: 1; drop-shadow: 0 0 20px rgba(37,99,235,0.4); }
+    100% { transform: scale(1); opacity: 0.9; }
+}
+
+@keyframes fadeText {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+/* =========================
+   HUTANG / KASBON STYLES
+========================= */
+.hutang-checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 10px;
+    background: rgba(239, 68, 68, 0.05);
+    border: 1px dashed rgba(239, 68, 68, 0.3);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+}
+
+.hutang-checkbox-container label {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--accent-red);
+    margin: 0;
+}
+
+#posNamaPelanggan {
+    margin-bottom: 12px;
+}
+
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+.status-badge.lunas {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+.status-badge.belum-lunas {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}

@@ -170,6 +170,22 @@ db.serialize(() => {
     `, (err) => {
         if (!err) console.log("💸 Database Pengeluaran Siap! ✅");
     });
+
+    // 6. Tabel Hutang / Kasbon
+    db.run(`
+        CREATE TABLE IF NOT EXISTS hutangs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tanggal TEXT NOT NULL,
+            nama_pelanggan TEXT NOT NULL,
+            items TEXT NOT NULL,
+            total_hutang INTEGER NOT NULL,
+            jumlah_dibayar INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'BELUM LUNAS',
+            oleh TEXT DEFAULT 'admin'
+        )
+    `, (err) => {
+        if (!err) console.log("📒 Database Hutang/Kasbon Siap! ✅");
+    });
 });
 
 /* ==========================================
@@ -704,6 +720,59 @@ app.post("/api/expenses/delete/:id", verifyToken, (req, res) => {
 /* =========================
 SERVER & SAFE SHUTDOWN
 ========================= */
+
+/* =========================
+   HUTANG / KASBON API
+========================= */
+app.get("/api/hutangs", verifyToken, (req, res) => {
+    db.all(`SELECT * FROM hutangs ORDER BY id DESC`, [], (err, rows) => {
+        if (err) return res.status(500).json({ success: false, message: "Gagal mengambil data hutang" });
+        res.json(rows);
+    });
+});
+
+app.post("/api/hutangs", verifyToken, (req, res) => {
+    const { tanggal, nama_pelanggan, items, total_hutang } = req.body;
+    const oleh = req.user.username;
+
+    if (!tanggal || !nama_pelanggan || !items || !total_hutang) {
+        return res.status(400).json({ success: false, message: "Data tidak lengkap" });
+    }
+
+    const query = `INSERT INTO hutangs (tanggal, nama_pelanggan, items, total_hutang, oleh) VALUES (?, ?, ?, ?, ?)`;
+    db.run(query, [tanggal, nama_pelanggan, JSON.stringify(items), total_hutang, oleh], function(err) {
+        if (err) return res.status(500).json({ success: false, message: "Gagal mencatat kasbon" });
+        
+        catatLog(oleh, "TAMBAH KASBON", `Menambahkan kasbon Rp ${total_hutang.toLocaleString('id-ID')} atas nama ${nama_pelanggan}`);
+        res.json({ success: true, message: "Kasbon berhasil dicatat!" });
+    });
+});
+
+app.post("/api/hutangs/bayar/:id", verifyToken, (req, res) => {
+    const id = req.params.id;
+    const { nominal_bayar } = req.body;
+    const oleh = req.user.username;
+
+    if (!nominal_bayar || isNaN(nominal_bayar) || nominal_bayar <= 0) {
+        return res.status(400).json({ success: false, message: "Nominal pembayaran tidak valid" });
+    }
+
+    db.get(`SELECT * FROM hutangs WHERE id = ?`, [id], (err, row) => {
+        if (err || !row) return res.status(404).json({ success: false, message: "Data kasbon tidak ditemukan" });
+
+        const sisa_hutang = row.total_hutang - row.jumlah_dibayar;
+        const bayar = Math.min(Number(nominal_bayar), sisa_hutang);
+        const total_dibayar_baru = row.jumlah_dibayar + bayar;
+        const status_baru = (total_dibayar_baru >= row.total_hutang) ? 'LUNAS' : 'BELUM LUNAS';
+
+        db.run(`UPDATE hutangs SET jumlah_dibayar = ?, status = ? WHERE id = ?`, [total_dibayar_baru, status_baru, id], function(updateErr) {
+            if (updateErr) return res.status(500).json({ success: false, message: "Gagal memperbarui kasbon" });
+
+            catatLog(oleh, "BAYAR KASBON", `Menerima pembayaran kasbon dari ${row.nama_pelanggan} sebesar Rp ${bayar.toLocaleString('id-ID')}`);
+            res.json({ success: true, message: "Pembayaran berhasil dicatat!" });
+        });
+    });
+});
 
 /* =========================
    UPLOAD LOGO API

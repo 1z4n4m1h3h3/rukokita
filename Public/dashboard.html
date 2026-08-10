@@ -31,6 +31,12 @@
 
 <body>
 
+    <!-- Splash Screen -->
+    <div id="splashScreen" class="splash-screen">
+        <img src="ADEQUA-LOGO.png" alt="ADEQUA Logo" class="splash-logo">
+        <div class="splash-text">ADEQUA</div>
+    </div>
+
     <!-- Animated Background Orbs -->
     <div class="bg-orb orb-1"></div>
     <div class="bg-orb orb-2"></div>
@@ -67,6 +73,9 @@
             </div>
             <div class="menu-item" onclick="showPage('posPage')" id="menuPos">
                 <i class="ri-shopping-cart-2-fill"></i> Kasir POS
+            </div>
+            <div class="menu-item" onclick="showPage('hutangPage')" id="menuHutang">
+                <i class="ri-book-read-fill"></i> Buku Kasbon
             </div>
             <div class="menu-item" onclick="showPage('inputPage')">
                 <i class="ri-file-add-fill"></i> Input Stock
@@ -399,8 +408,18 @@
                             <span id="posTotalTagihan">Rp 0</span>
                         </div>
 
-                        <div class="payment-section">
-                            <label>Uang Tunai (Cash)</label>
+                        <div class="hutang-checkbox-container" onclick="toggleKasbonPOS()">
+                            <input type="checkbox" id="posIsKasbon" style="pointer-events: none;">
+                            <label for="posIsKasbon">Bayar Nanti / Kasbon</label>
+                        </div>
+
+                        <div id="posNamaPelangganContainer" style="display: none;">
+                            <label style="font-size:12px;color:var(--text-secondary);">Nama Pelanggan Kasbon</label>
+                            <input type="text" id="posNamaPelanggan" placeholder="Contoh: Budi Warung" style="margin-bottom: 12px; padding: 10px; border-radius: 8px; border: 1px solid var(--border-subtle); width: 100%; background: var(--bg-input); color: var(--text-primary);">
+                        </div>
+
+                        <div class="payment-section" id="posPaymentSection">
+                            <label>Uang Tunai (Cash / Bayar DP)</label>
                             <input type="text" inputmode="numeric" id="posCash" placeholder="0" oninput="formatCashInput(this)">
                         </div>
 
@@ -413,6 +432,41 @@
                             <i class="ri-check-double-line"></i> Bayar Sekarang
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== HUTANG / KASBON PAGE ========== -->
+        <div id="hutangPage" class="page-content" style="display:none;">
+            <div class="navbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                <div>
+                    <h1>Buku Kasbon & Hutang</h1>
+                    <span>Daftar tagihan yang belum lunas</span>
+                </div>
+                <button class="btn-primary" onclick="loadHutangs()"><i class="ri-refresh-line"></i> Refresh</button>
+            </div>
+
+            <div class="data-card">
+                <div style="overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Tanggal</th>
+                                <th>Nama Pelanggan</th>
+                                <th>Barang Kasbon</th>
+                                <th>Total Hutang</th>
+                                <th>Dibayar</th>
+                                <th>Status</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hutangTableBody">
+                            <!-- Data hutang di-render di sini via JS -->
+                            <tr>
+                                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">Memuat data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -956,7 +1010,7 @@
             tutupUniversalConfirmModal();
         }
     </script>
-    <script src="script.js?v=12"></script>
+    <script src="script.js?v=13"></script>
     <script>
         // Inisialisasi Choices.js untuk semua select agar tampil premium
         document.addEventListener('DOMContentLoaded', function() {

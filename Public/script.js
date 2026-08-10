@@ -399,6 +399,9 @@ async function loadData(){
             fetch("/data"),
             fetch("/api/expenses")
         ]);
+        
+        loadHutangs(); // Refresh hutang data silently
+
         let allData = await resData.json();
         let allExpenses = [];
         if (resExpenses.ok) {
@@ -734,6 +737,15 @@ async function loadData(){
                 }
             });
         }
+
+        // Sembunyikan Splash Screen jika ada
+        const splash = document.getElementById("splashScreen");
+        if (splash && !splash.classList.contains("hidden")) {
+            setTimeout(() => {
+                splash.classList.add("hidden");
+            }, 800); // Tahan dikit biar animasinya keliatan
+        }
+        
     } catch (err) {
         console.error("Gagal memuat data utama:", err);
     }
@@ -2008,8 +2020,15 @@ async function checkoutPOS() {
     let total = posCart.reduce((sum, item) => sum + (item.harga * item.qty), 0);
     const cashInput = document.getElementById('posCash') ? document.getElementById('posCash').value.replace(/\D/g, '') : '0';
     const cash = Number(cashInput) || 0;
+    const isKasbon = document.getElementById('posIsKasbon') ? document.getElementById('posIsKasbon').checked : false;
+    const namaPelanggan = document.getElementById('posNamaPelanggan') ? document.getElementById('posNamaPelanggan').value.trim() : "";
     
-    if (cash > 0 && cash < total) {
+    if (isKasbon) {
+        if (!namaPelanggan) {
+            showToast("Nama Pelanggan Kasbon wajib diisi!", "warning");
+            return;
+        }
+    } else if (cash > 0 && cash < total) {
         showToast("Uang tunai kurang dari total tagihan!", "warning");
         return;
     }
@@ -2019,13 +2038,35 @@ async function checkoutPOS() {
     btn.innerHTML = `<i class="ri-loader-4-line spin"></i> Memproses...`;
 
     try {
-        // Build local timestamp YYYY-MM-DD
         const d = new Date();
         const today = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
-        
         const token = localStorage.getItem("token");
 
-        // Submit each item sequentially
+        // Jika mode Kasbon aktif, buat request hutang dulu
+        if (isKasbon) {
+            const resHutang = await fetch("/api/hutangs", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify({
+                    tanggal: today,
+                    nama_pelanggan: namaPelanggan,
+                    items: posCart,
+                    total_hutang: total
+                })
+            });
+            
+            if (!resHutang.ok) {
+                showToast("Gagal mencatat kasbon!", "error");
+                btn.disabled = false;
+                btn.innerHTML = `<i class="ri-check-double-line"></i> Bayar Sekarang`;
+                return;
+            }
+        }
+
+        // Submit each item sequentially to /add to reduce stock & count omset
         for (const item of posCart) {
             const payload = {
                 tanggal: today,
@@ -2044,29 +2085,143 @@ async function checkoutPOS() {
             });
         }
 
-        // Print Receipt (PDF)
-        const kembalian = cash > 0 ? (cash - total) : 0;
-        cetakStrukPOS([...posCart], cash, kembalian, total);
-        showToast("Transaksi Berhasil! Mengunduh Struk... 🖨️", "success");
+        showToast(isKasbon ? "Kasbon berhasil dicatat!" : "Transaksi POS berhasil!", "success");
+        
+        // Cetak struk
+        const kembalian = (!isKasbon && cash > 0) ? (cash - total) : 0;
+        cetakStrukPOS([...posCart], cash, kembalian, total, isKasbon, namaPelanggan);
 
+        // Reset
         posCart = [];
         document.getElementById('posCash').value = '';
+        if (document.getElementById('posIsKasbon')) {
+            document.getElementById('posIsKasbon').checked = false;
+            toggleKasbonPOS(); // Reset view
+        }
         renderCart();
-        loadData(); // Refresh dashboard data
+        loadData(); 
 
     } catch (err) {
         console.error(err);
-        showToast("Gagal melakukan transaksi", "error");
+        showToast("Error saat checkout POS", "error");
     } finally {
         btn.disabled = false;
         btn.innerHTML = `<i class="ri-check-double-line"></i> Bayar Sekarang`;
     }
 }
 
+function toggleKasbonPOS() {
+    const cb = document.getElementById("posIsKasbon");
+    if (!cb) return;
+    // Toggle manual karena label dibungkus div clickable
+    cb.checked = !cb.checked;
+    
+    const namaContainer = document.getElementById("posNamaPelangganContainer");
+    const paymentSection = document.getElementById("posPaymentSection");
+    
+    if (cb.checked) {
+        namaContainer.style.display = "block";
+        paymentSection.style.display = "none";
+        document.getElementById("posCash").value = ""; // Reset cash
+        calculateChange();
+    } else {
+        namaContainer.style.display = "none";
+        paymentSection.style.display = "block";
+        document.getElementById("posNamaPelanggan").value = "";
+    }
+}
+
+/* =========================
+   HUTANG / KASBON LOGIC
+========================= */
+async function loadHutangs() {
+    try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/hutangs", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const tbody = document.getElementById("hutangTableBody");
+            if (!tbody) return;
+            
+            let html = "";
+            if (data.length === 0) {
+                html = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Belum ada kasbon tercatat.</td></tr>';
+            } else {
+                data.forEach(item => {
+                    const statusClass = item.status === "LUNAS" ? "lunas" : "belum-lunas";
+                    let itemsHtml = "";
+                    try {
+                        const parsedItems = JSON.parse(item.items);
+                        parsedItems.forEach(pi => {
+                            itemsHtml += `<div>${pi.kategori} (${pi.qty}x)</div>`;
+                        });
+                    } catch(e) { itemsHtml = item.items; }
+
+                    html += `
+                        <tr>
+                            <td>${item.tanggal}</td>
+                            <td style="font-weight:bold; color:var(--text-primary);">${item.nama_pelanggan}</td>
+                            <td style="font-size:12px; color:var(--text-secondary);">${itemsHtml}</td>
+                            <td style="color:var(--accent-red); font-weight:bold;">Rp ${item.total_hutang.toLocaleString('id-ID')}</td>
+                            <td style="color:var(--accent-green); font-weight:bold;">Rp ${item.jumlah_dibayar.toLocaleString('id-ID')}</td>
+                            <td><span class="status-badge ${statusClass}">${item.status}</span></td>
+                            <td>
+                                ${item.status === 'BELUM LUNAS' ? 
+                                `<button onclick="bayarHutang(${item.id}, '${item.nama_pelanggan}', ${item.total_hutang - item.jumlah_dibayar})" style="background: var(--accent-blue); border:none; color:#fff; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600; font-size:12px;">
+                                    Bayar
+                                </button>` : '-'}
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+            tbody.innerHTML = html;
+        }
+    } catch (err) {
+        console.error("Gagal load kasbon:", err);
+    }
+}
+
+function bayarHutang(id, nama, sisa) {
+    const nominal = prompt(`Masukkan nominal pembayaran dari ${nama}\n(Sisa hutang: Rp ${sisa.toLocaleString('id-ID')})`);
+    if (nominal === null || nominal.trim() === "") return;
+    
+    const numNominal = parseInt(nominal.replace(/\D/g, ''));
+    if (isNaN(numNominal) || numNominal <= 0) {
+        showToast("Nominal tidak valid!", "error");
+        return;
+    }
+
+    const token = localStorage.getItem("token");
+    fetch(`/api/hutangs/bayar/${id}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({ nominal_bayar: numNominal })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, "success");
+            loadHutangs();
+        } else {
+            showToast(data.message, "error");
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showToast("Gagal memproses pembayaran", "error");
+    });
+}
+
 /* ==========================================
    CETAK STRUK POS (PDF)
 ========================================== */
-function cetakStrukPOS(cart, cash, kembalian, total) {
+function cetakStrukPOS(cart, cash, kembalian, total, isKasbon = false, namaPelanggan = "") {
     if (typeof window.jspdf === 'undefined') {
         showToast("Gagal memuat sistem PDF", "error");
         return;
@@ -2125,20 +2280,28 @@ function cetakStrukPOS(cart, cash, kembalian, total) {
     doc.line(5, y, 75, y);
     doc.setLineDashPattern([], 0); // reset
     
-    y += 6;
+    y += 5;
     doc.setFont("helvetica", "normal");
     doc.text("Total Tagihan", 5, y);
     doc.setFont("helvetica", "bold");
     doc.text(`Rp ${total.toLocaleString("id-ID")}`, 75, y, { align: "right" });
     
     y += 5;
-    doc.setFont("helvetica", "normal");
-    doc.text("Tunai (Cash)", 5, y);
-    doc.text(`Rp ${cash.toLocaleString("id-ID")}`, 75, y, { align: "right" });
-    
-    y += 5;
-    doc.text("Kembalian", 5, y);
-    doc.text(`Rp ${kembalian.toLocaleString("id-ID")}`, 75, y, { align: "right" });
+    if (isKasbon) {
+        doc.setFont("helvetica", "bold");
+        doc.text("STATUS: KASBON", 5, y);
+        y += 5;
+        doc.setFont("helvetica", "normal");
+        doc.text(`Pelanggan: ${namaPelanggan}`, 5, y);
+    } else {
+        doc.setFont("helvetica", "normal");
+        doc.text("Tunai (Cash)", 5, y);
+        doc.text(`Rp ${cash.toLocaleString("id-ID")}`, 75, y, { align: "right" });
+        
+        y += 5;
+        doc.text("Kembalian", 5, y);
+        doc.text(`Rp ${kembalian.toLocaleString("id-ID")}`, 75, y, { align: "right" });
+    }
     
     y += 8;
     doc.setLineDashPattern([1, 1], 0);
