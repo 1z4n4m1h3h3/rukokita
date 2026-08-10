@@ -1,4 +1,4 @@
-const CACHE_NAME = 'adequa-pwa-v8';
+const CACHE_NAME = 'adequa-pwa-v10';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
