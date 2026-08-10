@@ -1972,9 +1972,19 @@ function renderCart() {
     document.getElementById('btnCheckout').disabled = false;
 }
 
+function formatCashInput(input) {
+    let value = input.value.replace(/\D/g, '');
+    if (value === '') {
+        input.value = '';
+    } else {
+        input.value = parseInt(value, 10).toLocaleString('id-ID');
+    }
+    calculateChange();
+}
+
 function calculateChange() {
     let total = posCart.reduce((sum, item) => sum + (item.harga * item.qty), 0);
-    const cashInput = document.getElementById('posCash') ? document.getElementById('posCash').value : 0;
+    const cashInput = document.getElementById('posCash') ? document.getElementById('posCash').value.replace(/\D/g, '') : 0;
     const cash = Number(cashInput) || 0;
     const change = cash - total;
     const kembalianEl = document.getElementById('posKembalian');
@@ -1996,7 +2006,8 @@ async function checkoutPOS() {
     if (posCart.length === 0) return;
     
     let total = posCart.reduce((sum, item) => sum + (item.harga * item.qty), 0);
-    const cash = Number(document.getElementById('posCash').value) || 0;
+    const cashInput = document.getElementById('posCash') ? document.getElementById('posCash').value.replace(/\D/g, '') : '0';
+    const cash = Number(cashInput) || 0;
     
     if (cash > 0 && cash < total) {
         showToast("Uang tunai kurang dari total tagihan!", "warning");

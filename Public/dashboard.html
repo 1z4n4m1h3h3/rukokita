@@ -401,7 +401,7 @@
 
                         <div class="payment-section">
                             <label>Uang Tunai (Cash)</label>
-                            <input type="number" id="posCash" placeholder="0" oninput="calculateChange()">
+                            <input type="text" inputmode="numeric" id="posCash" placeholder="0" oninput="formatCashInput(this)">
                         </div>
 
                         <div class="summary-row change-row">
@@ -956,7 +956,7 @@
             tutupUniversalConfirmModal();
         }
     </script>
-    <script src="script.js?v=11"></script>
+    <script src="script.js?v=12"></script>
     <script>
         // Inisialisasi Choices.js untuk semua select agar tampil premium
         document.addEventListener('DOMContentLoaded', function() {
