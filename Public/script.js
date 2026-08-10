@@ -40,14 +40,20 @@ let profitChartInstance = null;
    SETTING HARGA (Default fallback)
 ========================= */
 let settingHarga = {
-    modalWarung: 16000,
-    jualWarung: 18000,
-    modalEcer: 16000,
-    jualEcer: 19000,
-    modalAquaWarung: 14000,
-    jualAquaWarung: 16000,
-    modalAquaEcer: 15000,
-    jualAquaEcer: 18000
+    modalWarung: 16000, jualWarung: 18000,
+    modalEcer: 16000, jualEcer: 19000,
+    modalAquaWarung: 14000, jualAquaWarung: 16000,
+    modalAquaEcer: 15000, jualAquaEcer: 18000
+};
+
+// Fungsi helper format Rupiah
+const formatRupiah = (number) => {
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(number || 0);
 };
 
 let cachedLogs = []; // Cache data log aktivitas untuk filtering client-side
