@@ -1284,8 +1284,11 @@ tr:hover {
 }
 
 .splash-logo {
-    width: 180px;
+    width: 280px;
     height: auto;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    object-fit: cover;
     animation: pulseLogo 2s infinite ease-in-out;
     margin-bottom: 20px;
 }
