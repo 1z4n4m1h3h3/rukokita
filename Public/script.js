@@ -95,7 +95,69 @@ document.addEventListener("DOMContentLoaded", async () => {
     // 🔥 Ambil setting harga dulu sampai selesai, baru muat data stok biar profit gak ngaco!
     await loadSettingHarga();
     loadData();
+    initPushNotifications();
 });
+
+/* =========================
+   PUSH NOTIFICATION SYSTEM
+========================= */
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+async function initPushNotifications() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+    try {
+        const registration = await navigator.serviceWorker.ready;
+        const existingSubscription = await registration.pushManager.getSubscription();
+        
+        if (existingSubscription) {
+            // Sudah subscribe, kirim lagi untuk memastikan backend punya data terbaru
+            await fetch('/api/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(existingSubscription)
+            });
+            return;
+        }
+
+        // Jika belum subscribe, minta izin
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            console.log('Push notification permission denied.');
+            return;
+        }
+
+        // Ambil VAPID key dari server
+        const response = await fetch('/api/vapidPublicKey');
+        const vapidPublicKey = await response.text();
+        if (!vapidPublicKey) return;
+
+        const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+        
+        const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedVapidKey
+        });
+
+        await fetch('/api/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(subscription)
+        });
+        console.log('Successfully subscribed to push notifications!');
+    } catch (error) {
+        console.error('Failed to subscribe the user: ', error);
+    }
+}
 
 /* =========================
    FUNGSI SET DEFAULT TANGGAL (BARU)

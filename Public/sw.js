@@ -68,3 +68,54 @@ self.addEventListener('fetch', (event) => {
         );
     }
 });
+
+// Event Listener untuk Menerima Push Notification
+self.addEventListener('push', function(event) {
+    console.log('[Service Worker] Push Received.');
+    let data = { title: "ADEQUA Update", body: "Ada pembaruan data baru." };
+    
+    if (event.data) {
+        try {
+            data = event.data.json();
+        } catch (e) {
+            data.body = event.data.text();
+        }
+    }
+
+    const title = data.title;
+    const options = {
+        body: data.body,
+        icon: '/ADEQUA-LOGO.png',
+        badge: '/ADEQUA-LOGO.png',
+        vibrate: [200, 100, 200],
+        data: {
+            dateOfArrival: Date.now(),
+            primaryKey: '2'
+        },
+        actions: [
+            {action: 'explore', title: 'Buka Aplikasi', icon: '/ADEQUA-LOGO.png'}
+        ]
+    };
+
+    event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Event Listener untuk Klik Notifikasi
+self.addEventListener('notificationclick', function(event) {
+    console.log('[Service Worker] Notification click Received.');
+    event.notification.close();
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window' }).then(windowClients => {
+            for (var i = 0; i < windowClients.length; i++) {
+                var client = windowClients[i];
+                if (client.url === '/' && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                return clients.openWindow('/');
+            }
+        })
+    );
+});

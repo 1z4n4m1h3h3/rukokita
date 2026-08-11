@@ -16,6 +16,18 @@ const app = express();
 const SALT_ROUNDS = 10; // Standar enkripsi bcrypt
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_123";
 
+// Konfigurasi Web Push
+const webpush = require("web-push");
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+        'mailto:admin@adequa.com',
+        process.env.VAPID_PUBLIC_KEY,
+        process.env.VAPID_PRIVATE_KEY
+    );
+} else {
+    console.warn("⚠️ VAPID Keys belum dikonfigurasi di .env!");
+}
+
 /* =========================
 MIDDLEWARE
 ========================= */
@@ -186,6 +198,18 @@ db.serialize(() => {
     `, (err) => {
         if (!err) console.log("📒 Database Hutang/Kasbon Siap! ✅");
     });
+
+    // 7. Tabel Push Subscriptions
+    db.run(`
+        CREATE TABLE IF NOT EXISTS subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            endpoint TEXT UNIQUE NOT NULL,
+            keys TEXT NOT NULL,
+            username TEXT
+        )
+    `, (err) => {
+        if (!err) console.log("🔔 Database Subscriptions Siap! ✅");
+    });
 });
 
 /* ==========================================
@@ -211,6 +235,48 @@ function catatLog(eksekutor, tipe_aksi, deskripsi) {
         if (err) console.error("❌ Gagal mencatat log:", err.message);
     });
 }
+
+/* ==========================================
+   FUNGSI HELPER: PUSH NOTIFICATION
+========================================== */
+function sendPushNotification(payload) {
+    if (!process.env.VAPID_PUBLIC_KEY) return;
+    db.all(`SELECT endpoint, keys FROM subscriptions`, [], (err, rows) => {
+        if (err || !rows) return;
+        rows.forEach(row => {
+            const pushSubscription = {
+                endpoint: row.endpoint,
+                keys: JSON.parse(row.keys)
+            };
+            webpush.sendNotification(pushSubscription, JSON.stringify(payload))
+                .catch(err => {
+                    if (err.statusCode === 410) {
+                        db.run(`DELETE FROM subscriptions WHERE endpoint = ?`, [row.endpoint]);
+                    }
+                });
+        });
+    });
+}
+
+/* ==========================================
+   API ENDPOINTS: PUSH NOTIFICATIONS
+========================================== */
+app.get('/api/vapidPublicKey', (req, res) => {
+    res.send(process.env.VAPID_PUBLIC_KEY || '');
+});
+
+app.post('/api/subscribe', verifyToken, (req, res) => {
+    const subscription = req.body;
+    const username = req.user.username;
+    
+    db.run(`INSERT OR REPLACE INTO subscriptions (endpoint, keys, username) VALUES (?, ?, ?)`,
+        [subscription.endpoint, JSON.stringify(subscription.keys), username],
+        (err) => {
+            if (err) return res.status(500).json({ success: false, message: "Gagal menyimpan langganan" });
+            res.status(201).json({ success: true, message: "Berhasil berlangganan notifikasi" });
+        }
+    );
+});
 
 /* ==========================================
    API ENDPOINTS: LOGS & SETTINGS (PROTECTED)
@@ -602,6 +668,14 @@ app.post("/add", verifyToken, (req, res) => {
         function (err) {
             if (err) return res.status(500).json({ success: false, message: "Gagal input stok" });
             catatLog(olehUser, "INPUT", `Menambah stock ${kategori} (Masuk: ${numMasuk}, Keluar: ${numKeluar}) untuk tanggal ${tanggal}`);
+            
+            // Tembak Notifikasi
+            let titleNotif = numMasuk > 0 ? "Stok Baru Masuk!" : "Transaksi Baru!";
+            let bodyNotif = numMasuk > 0 ? 
+                `Ada stok ${kategori} baru sebanyak ${numMasuk} masuk.` : 
+                `Terjual ${numKeluar} ${kategori} baru saja.`;
+            sendPushNotification({ title: titleNotif, body: bodyNotif });
+
             res.json({ success: true, id: this.lastID });
         }
     );
