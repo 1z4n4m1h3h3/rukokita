@@ -39,7 +39,7 @@ h1, h2, h3, h4, h5, h6 {
     padding: 28px 20px;
     display: flex;
     flex-direction: column;
-    z-index: 1000;
+    z-index: 1100;
     transform: translateX(-100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 5px 0 25px rgba(0,0,0,0.1);
@@ -879,7 +879,7 @@ tr:hover {
     height: 100vh;
     background: rgba(15, 23, 42, 0.4);
     backdrop-filter: blur(2px);
-    z-index: 999;
+    z-index: 1050;
     opacity: 0;
     transition: opacity 0.3s ease;
 }
