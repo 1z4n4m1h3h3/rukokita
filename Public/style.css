@@ -1213,105 +1213,50 @@ tr:hover {
 /* =========================
    MOBILE BOTTOM NAVIGATION (MODERN UI)
 ========================= */
-.mobile-bottom-nav {
+.mobile-menu-fab {
     display: none; /* Sembunyikan di desktop */
 }
 
 @media (max-width: 768px) {
-    /* Sembunyikan toggle lama, gunakan 'Lainnya' di nav bawah */
+    /* Sembunyikan toggle lama */
     .mobile-toggle {
         display: none !important;
     }
 
-    /* Padding bawah tambahan agar konten tidak tertutup nav */
+    /* Padding bawah normal */
     .main {
-        padding-bottom: 100px !important;
+        padding-bottom: 30px !important;
     }
 
-    /* Style Navigasi Bawah Modern */
-    .mobile-bottom-nav {
+    /* Style Floating Action Button */
+    .mobile-menu-fab {
         display: flex;
         position: fixed;
-        bottom: 16px;
-        left: 16px;
-        right: 16px;
-        height: 72px;
-        background: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.4);
-        border-radius: 24px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-        z-index: 1000;
-        justify-content: space-around;
-        align-items: center;
-        padding: 0 10px;
-        overflow: hidden;
-        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
-    }
-
-    .mobile-bottom-nav.hide-bottom-nav {
-        transform: translateY(150%);
-        opacity: 0;
-        pointer-events: none;
-    }
-
-    /* Dark Mode Support via theme variables */
-    [data-theme="dark"] .mobile-bottom-nav {
-        background: rgba(30, 41, 59, 0.85);
-        border-color: rgba(255, 255, 255, 0.1);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    }
-
-    .mobile-bottom-nav .nav-item {
-        display: flex;
-        flex-direction: column;
+        bottom: 24px;
+        right: 24px;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: var(--gradient-blue);
+        color: white;
+        border: none;
+        box-shadow: 0 4px 20px rgba(37, 99, 235, 0.5);
         align-items: center;
         justify-content: center;
-        gap: 4px;
-        width: 65px;
-        height: 100%;
-        color: var(--text-muted);
+        font-size: 28px;
+        z-index: 1000;
         cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
     }
 
-    .mobile-bottom-nav .nav-item i {
-        font-size: 24px;
-        transition: transform 0.3s;
+    .mobile-menu-fab:active {
+        transform: scale(0.9);
     }
 
-    .mobile-bottom-nav .nav-item span {
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.3px;
-        opacity: 0.7;
-    }
-
-    .mobile-bottom-nav .nav-item.active {
-        color: var(--accent-blue);
-    }
-
-    .mobile-bottom-nav .nav-item.active i {
-        transform: translateY(-2px);
-    }
-
-    .mobile-bottom-nav .nav-item.active span {
-        opacity: 1;
-        color: var(--text-primary);
-    }
-
-    /* Active indicator bar */
-    .mobile-bottom-nav .nav-item.active::after {
-        content: '';
-        position: absolute;
-        top: -8px;
-        width: 36px;
-        height: 4px;
-        background: var(--gradient-blue);
-        border-radius: 0 0 4px 4px;
-        box-shadow: 0 2px 10px var(--accent-blue);
+    .mobile-menu-fab.hide-fab {
+        transform: scale(0) rotate(-90deg);
+        opacity: 0;
+        pointer-events: none;
     }
 }
 

@@ -1040,25 +1040,10 @@
         }
     </script>
 
-    <!-- Mobile Bottom Navigation -->
-    <nav class="mobile-bottom-nav">
-        <div class="nav-item active" onclick="showPage('dashboardPage'); updateBottomNav(this)">
-            <i class="ri-dashboard-3-fill"></i>
-            <span>Dashboard</span>
-        </div>
-        <div class="nav-item" onclick="showPage('posPage'); updateBottomNav(this)">
-            <i class="ri-shopping-cart-2-fill"></i>
-            <span>POS</span>
-        </div>
-        <div class="nav-item" onclick="showPage('inputPage'); updateBottomNav(this)">
-            <i class="ri-file-add-fill"></i>
-            <span>Stock</span>
-        </div>
-        <div class="nav-item" onclick="toggleMobileMenu()">
-            <i class="ri-menu-line"></i>
-            <span>Lainnya</span>
-        </div>
-    </nav>
+    <!-- Mobile Menu FAB -->
+    <button class="mobile-menu-fab" onclick="toggleMobileMenu()">
+        <i class="ri-menu-line"></i>
+    </button>
 
     <!-- Register Service Worker -->
     <script>

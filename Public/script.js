@@ -293,11 +293,11 @@ function showPage(pageId){
     // Auto-close sidebar after clicking a menu item (all screen sizes)
     const sidebar = document.getElementById("sidebar");
     const overlay = document.getElementById("mobileOverlay");
-    const bottomNav = document.querySelector(".mobile-bottom-nav");
+    const bottomNav = document.querySelector(".mobile-menu-fab");
     if (sidebar && overlay) {
         sidebar.classList.remove("show-sidebar");
         overlay.classList.remove("show-overlay");
-        if (bottomNav) bottomNav.classList.remove("hide-bottom-nav");
+        if (bottomNav) bottomNav.classList.remove("hide-fab");
     }
 }
 
@@ -307,12 +307,12 @@ function showPage(pageId){
 function toggleMobileMenu() {
     const sidebar = document.getElementById("sidebar");
     const overlay = document.getElementById("mobileOverlay");
-    const bottomNav = document.querySelector(".mobile-bottom-nav");
+    const bottomNav = document.querySelector(".mobile-menu-fab");
     
     if (sidebar && overlay) {
         sidebar.classList.toggle("show-sidebar");
         overlay.classList.toggle("show-overlay");
-        if (bottomNav) bottomNav.classList.toggle("hide-bottom-nav");
+        if (bottomNav) bottomNav.classList.toggle("hide-fab");
     }
 }
 
