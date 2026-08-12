@@ -2066,6 +2066,13 @@ function updateCartQty(index, delta) {
     renderCart();
 }
 
+function removeFromCart(index) {
+    if (posCart[index]) {
+        posCart.splice(index, 1);
+        renderCart();
+    }
+}
+
 function renderCart() {
     const cartList = document.getElementById('posCartList');
     if (!cartList) return;
@@ -2094,6 +2101,7 @@ function renderCart() {
                 <button class="qty-btn" onclick="updateCartQty(${index}, -1)"><i class="ri-subtract-line"></i></button>
                 <span class="cart-item-qty">${item.qty}</span>
                 <button class="qty-btn" onclick="updateCartQty(${index}, 1)"><i class="ri-add-line"></i></button>
+                <button class="qty-btn" onclick="removeFromCart(${index})" style="background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); margin-left: 8px;"><i class="ri-delete-bin-line"></i></button>
             </div>
         </div>
         `;

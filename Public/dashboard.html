@@ -424,7 +424,12 @@
 
                         <div class="payment-section" id="posPaymentSection">
                             <label>Uang Tunai (Cash / Bayar DP)</label>
-                            <input type="text" inputmode="numeric" id="posCash" placeholder="0" oninput="formatCashInput(this)">
+                            <div style="position: relative;">
+                                <input type="text" inputmode="numeric" id="posCash" placeholder="0" oninput="formatCashInput(this)" style="padding-right: 35px; width: 100%; box-sizing: border-box;">
+                                <button onclick="document.getElementById('posCash').value=''; calculateChange()" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                                    <i class="ri-close-circle-fill"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <div class="summary-row change-row">
