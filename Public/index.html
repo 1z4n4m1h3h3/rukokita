@@ -69,12 +69,12 @@
                         </div>
                     </div>
                     
-                    <button type="submit" class="btn-login" id="btnLogin">
-                        <span class="btn-text">Masuk <i class="ri-arrow-right-line"></i></span>
-                        <span class="btn-loader" style="display:none;"><i class="ri-loader-4-line spin"></i> Verifikasi...</span>
-                    </button>
-                    <div style="text-align: center; margin-top: 15px;">
-                        <a href="#" onclick="showStep('step4')" style="color: var(--primary-color); text-decoration: none; font-size: 0.9rem; font-weight: 500;">Lupa Password?</a>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <button type="submit" class="btn-login" id="btnLogin" style="width: auto; flex: 1; margin-right: 10px;">
+                            <span class="btn-text">Masuk <i class="ri-arrow-right-line"></i></span>
+                            <span class="btn-loader" style="display:none;"><i class="ri-loader-4-line spin"></i> Sedang dicek...</span>
+                        </button>
+                        <a href="#" onclick="showStep(4)" style="font-size: 13px; color: var(--accent-blue); text-decoration: none; font-weight: 500;">Lupa Password?</a>
                     </div>
                 </form>
             </div>
@@ -106,10 +106,13 @@
                     <input type="password" maxlength="1" class="pin-box" data-index="5" inputmode="numeric" autocomplete="off">
                 </div>
 
-                <button class="btn-login" id="btnVerifyPin" onclick="verifyPin()">
-                    <span class="btn-text"><i class="ri-shield-check-fill"></i> Autentikasi</span>
-                    <span class="btn-loader" style="display:none;"><i class="ri-loader-4-line spin"></i> Memverifikasi...</span>
-                </button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                    <button class="btn-login" id="btnVerifyPin" onclick="verifyPin()" style="width: auto; flex: 1; margin-right: 10px;">
+                        <span class="btn-text">Verifikasi PIN <i class="ri-check-line"></i></span>
+                        <span class="btn-loader" style="display:none;"><i class="ri-loader-4-line spin"></i> Memeriksa...</span>
+                    </button>
+                    <a href="#" onclick="showStep(4)" style="font-size: 13px; color: var(--accent-blue); text-decoration: none; font-weight: 500;">Lupa PIN?</a>
+                </div>
             </div>
 
             <!-- Step 3: Set New PIN -->
@@ -153,47 +156,70 @@
                 
                 <div class="login-header" style="margin-bottom: 20px;">
                     <img src="ADEQUA-LOGO.png" alt="Logo" class="app-logo">
-                    <h2>Reset Password</h2>
-                    <p class="subtitle">Masukkan Username dan PIN untuk mereset</p>
+                    <h2>Lupa PIN/Password?</h2>
+                    <p class="subtitle">Kami akan kirimkan kode OTP ke WhatsApp Anda</p>
                 </div>
 
-                <div id="reset-error" class="alert-box alert-error" style="display: none;">
-                    <i class="ri-error-warning-fill"></i> <span id="reset-error-text"></span>
+                <div id="request-error" class="alert-box alert-error" style="display: none;">
+                    <i class="ri-error-warning-fill"></i> <span id="request-error-text"></span>
                 </div>
 
-                <form id="resetForm" style="margin-top: 20px;">
+                <form id="requestResetForm" style="margin-top: 20px;">
                     <div class="input-group floating">
                         <div class="input-wrapper">
                             <i class="ri-user-3-fill input-icon"></i>
-                            <input type="text" id="resetUsername" required placeholder=" " autocomplete="off">
-                            <label for="resetUsername">Username</label>
+                            <input type="text" id="reqResetUsername" required placeholder=" " autocomplete="off">
+                            <label for="reqResetUsername">Masukkan Username Anda</label>
                         </div>
                     </div>
 
+                    <button type="submit" class="btn-login" id="btnRequestReset">
+                        <span class="btn-text">Kirim OTP ke WA <i class="ri-whatsapp-line"></i></span>
+                        <span class="btn-loader" style="display:none;"><i class="ri-loader-4-line spin"></i> Mengirim...</span>
+                    </button>
+                </form>
+            </div>
+
+            <div id="step5" class="login-step">
+                <div class="step-back" onclick="showStep(4)">
+                    <i class="ri-arrow-left-s-line"></i> Kembali
+                </div>
+                
+                <div class="login-header" style="margin-bottom: 20px;">
+                    <h2>Verifikasi OTP</h2>
+                    <p class="subtitle">Masukkan 6-digit OTP dari WhatsApp</p>
+                </div>
+
+                <div id="verify-error" class="alert-box alert-error" style="display: none;">
+                    <i class="ri-error-warning-fill"></i> <span id="verify-error-text"></span>
+                </div>
+
+                <form id="verifyResetForm" style="margin-top: 20px;">
                     <div class="input-group">
-                        <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-color); margin-bottom: 8px;">PIN 6-Digit Lama</label>
-                        <div class="pin-input-container" id="resetPinInputContainer" style="margin-bottom: 20px;">
-                            <input type="password" maxlength="1" class="pin-box" data-index="0" inputmode="numeric" autocomplete="off">
-                            <input type="password" maxlength="1" class="pin-box" data-index="1" inputmode="numeric" autocomplete="off">
-                            <input type="password" maxlength="1" class="pin-box" data-index="2" inputmode="numeric" autocomplete="off">
+                        <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-color); margin-bottom: 8px;">Kode OTP</label>
+                        <div class="pin-input-container" id="otpInputContainer" style="margin-bottom: 20px;">
+                            <input type="password" maxlength="1" class="pin-box otp-box" data-index="0" inputmode="numeric" autocomplete="off">
+                            <input type="password" maxlength="1" class="pin-box otp-box" data-index="1" inputmode="numeric" autocomplete="off">
+                            <input type="password" maxlength="1" class="pin-box otp-box" data-index="2" inputmode="numeric" autocomplete="off">
                             <div class="pin-separator">—</div>
-                            <input type="password" maxlength="1" class="pin-box" data-index="3" inputmode="numeric" autocomplete="off">
-                            <input type="password" maxlength="1" class="pin-box" data-index="4" inputmode="numeric" autocomplete="off">
-                            <input type="password" maxlength="1" class="pin-box" data-index="5" inputmode="numeric" autocomplete="off">
+                            <input type="password" maxlength="1" class="pin-box otp-box" data-index="3" inputmode="numeric" autocomplete="off">
+                            <input type="password" maxlength="1" class="pin-box otp-box" data-index="4" inputmode="numeric" autocomplete="off">
+                            <input type="password" maxlength="1" class="pin-box otp-box" data-index="5" inputmode="numeric" autocomplete="off">
                         </div>
                     </div>
 
                     <div class="input-group floating" style="margin-top: 20px;">
                         <div class="input-wrapper">
                             <i class="ri-lock-password-fill input-icon"></i>
-                            <input type="password" id="resetNewPassword" required placeholder=" ">
-                            <label for="resetNewPassword">Password Baru</label>
+                            <input type="password" id="resetNewPassOrPin" required placeholder=" " autocomplete="new-password">
+                            <label for="resetNewPassOrPin">Password / PIN Baru</label>
                         </div>
+                        <small style="color: var(--text-muted); font-size: 11px; margin-top: 6px; display: block;">Jika berupa 6 angka, akan otomatis jadi PIN. Jika huruf/kombinasi, akan jadi Password.</small>
                     </div>
 
-                    <button type="submit" class="btn-login" id="btnReset">
-                        <span class="btn-text">Reset Password <i class="ri-check-line"></i></span>
-                        <span class="btn-loader" style="display:none;"><i class="ri-loader-4-line spin"></i> Mereset...</span>
+                    <button type="submit" class="btn-login" id="btnVerifyReset" style="margin-top: 20px;">
+                        <span class="btn-text">Reset & Simpan <i class="ri-save-line"></i></span>
+                        <span class="btn-loader" style="display:none;"><i class="ri-loader-4-line spin"></i> Memproses...</span>
                     </button>
                 </form>
             </div>

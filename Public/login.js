@@ -159,30 +159,24 @@ async function setNewPin() {
 }
 
 /* =========================
-   STEP 4: RESET PASSWORD
+   STEP 4: REQUEST OTP WHATSAPP
 ========================= */
-const resetForm = document.getElementById('resetForm');
-if (resetForm) {
-    resetForm.addEventListener('submit', async (e) => {
+let resetTargetUsername = "";
+
+const requestResetForm = document.getElementById('requestResetForm');
+if (requestResetForm) {
+    requestResetForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const username = document.getElementById('resetUsername').value.trim();
-        const pin = collectPinValue('resetPinInputContainer');
-        const newPassword = document.getElementById('resetNewPassword').value;
-        const errorContainer = document.getElementById('reset-error');
-        const errorText = document.getElementById('reset-error-text');
-        const btn = document.getElementById('btnReset');
+        const username = document.getElementById('reqResetUsername').value.trim();
+        const errorContainer = document.getElementById('request-error');
+        const errorText = document.getElementById('request-error-text');
+        const btn = document.getElementById('btnRequestReset');
 
         errorContainer.style.display = 'none';
 
-        if (pin.length !== 6 || !/^\d{6}$/.test(pin)) {
-            errorText.innerText = 'PIN harus 6 digit angka!';
-            errorContainer.style.display = 'flex';
-            return;
-        }
-
-        if (newPassword.length < 5) {
-            errorText.innerText = 'Password baru minimal 5 karakter!';
+        if (!username) {
+            errorText.innerText = 'Masukkan username Anda!';
             errorContainer.style.display = 'flex';
             return;
         }
@@ -190,10 +184,75 @@ if (resetForm) {
         toggleBtnLoading(btn, true);
 
         try {
-            const response = await fetch('/api/forgot-password', {
+            const response = await fetch('/api/auth/request-reset', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, pin, newPassword })
+                body: JSON.stringify({ username })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                resetTargetUsername = username;
+                showStep('step5');
+                focusFirstPinBox('otpInputContainer');
+            } else {
+                errorText.innerText = data.message || 'Gagal mengirim OTP!';
+                errorContainer.style.display = 'flex';
+            }
+        } catch (err) {
+            errorText.innerText = 'Gagal terhubung ke server.';
+            errorContainer.style.display = 'flex';
+        } finally {
+            toggleBtnLoading(btn, false);
+        }
+    });
+}
+
+/* =========================
+   STEP 5: VERIFY OTP & RESET
+========================= */
+const verifyResetForm = document.getElementById('verifyResetForm');
+if (verifyResetForm) {
+    verifyResetForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const otp = collectPinValue('otpInputContainer');
+        const newPassOrPin = document.getElementById('resetNewPassOrPin').value;
+        const errorContainer = document.getElementById('verify-error');
+        const errorText = document.getElementById('verify-error-text');
+        const btn = document.getElementById('btnVerifyReset');
+
+        errorContainer.style.display = 'none';
+
+        if (otp.length !== 6 || !/^\d{6}$/.test(otp)) {
+            errorText.innerText = 'OTP harus 6 digit angka!';
+            errorContainer.style.display = 'flex';
+            return;
+        }
+
+        if (newPassOrPin.length < 5) {
+            errorText.innerText = 'Password/PIN baru minimal 5 karakter!';
+            errorContainer.style.display = 'flex';
+            return;
+        }
+
+        toggleBtnLoading(btn, true);
+        
+        // Cek apakah murni angka 6 digit (berarti PIN)
+        const isPin = /^\d{6}$/.test(newPassOrPin);
+        const payload = {
+            username: resetTargetUsername,
+            otp: otp,
+            newPin: isPin ? newPassOrPin : null,
+            newPassword: !isPin ? newPassOrPin : null
+        };
+
+        try {
+            const response = await fetch('/api/auth/reset-pin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
 
             const data = await response.json();
@@ -201,9 +260,10 @@ if (resetForm) {
             if (response.ok && data.success) {
                 alert('Berhasil! ' + data.message);
                 goBackToStep1();
-                document.getElementById('resetForm').reset();
+                document.getElementById('requestResetForm').reset();
+                document.getElementById('verifyResetForm').reset();
             } else {
-                errorText.innerText = data.message || 'Gagal mereset password!';
+                errorText.innerText = data.message || 'Gagal verifikasi OTP!';
                 errorContainer.style.display = 'flex';
             }
         } catch (err) {
@@ -232,8 +292,11 @@ function goBackToStep1() {
     showStep('step1');
     clearPinBoxes('pinInputContainer');
     clearPinBoxes('setPinInputContainer');
+    clearPinBoxes('otpInputContainer');
     document.getElementById('pin-error').style.display = 'none';
     document.getElementById('setpin-error').style.display = 'none';
+    document.getElementById('request-error').style.display = 'none';
+    document.getElementById('verify-error').style.display = 'none';
 }
 
 /* =========================
@@ -346,5 +409,5 @@ function toggleBtnLoading(btn, isLoading) {
 document.addEventListener('DOMContentLoaded', () => {
     initPinAutoFocus('pinInputContainer');
     initPinAutoFocus('setPinInputContainer');
-    initPinAutoFocus('resetPinInputContainer');
+    initPinAutoFocus('otpInputContainer');
 });

@@ -717,97 +717,142 @@ async function loadData(){
 
         const ctxSales = document.getElementById("salesChart");
         const ctxProfit = document.getElementById("profitChart");
+        const ctxOmset = document.getElementById("omsetChart");
 
-        if (ctxSales && ctxProfit) {
+        if (ctxSales && ctxProfit && ctxOmset) {
             if (salesChartInstance) salesChartInstance.destroy();
             if (profitChartInstance) profitChartInstance.destroy();
+            if (window.omsetChartInstance) window.omsetChartInstance.destroy();
 
-            // 1. Grafik Penjualan
-            salesChartInstance = new Chart(ctxSales, {
-                type: 'bar',
-                data: {
-                    labels: sortedDates,
-                    datasets: [
-                        {
-                            label: 'Gas Keluar (Tabung)',
-                            data: salesGasValues,
-                            backgroundColor: '#38bdf8',
-                            borderRadius: 6,
-                            maxBarThickness: 40
-                        },
-                        {
-                            label: 'Aqua Keluar (Galon)',
-                            data: salesAquaValues,
-                            backgroundColor: '#34d399',
-                            borderRadius: 6,
-                            maxBarThickness: 40
-                        }
-                    ]
+            // 1. Grafik Penjualan (ApexCharts Bar)
+            const salesOptions = {
+                series: [{
+                    name: 'Gas Keluar (Tabung)',
+                    data: salesGasValues
+                }, {
+                    name: 'Aqua Keluar (Galon)',
+                    data: salesAquaValues
+                }],
+                chart: {
+                    type: 'bar',
+                    height: 280,
+                    toolbar: { show: false },
+                    fontFamily: 'Inter, sans-serif'
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: '#64748b' } } },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { color: '#64748b' } },
-                        y: { 
-                            beginAtZero: true,
-                            grace: '5%',
-                            grid: { color: '#e2e8f0' }, 
-                            ticks: { color: '#64748b', precision: 0 } 
+                plotOptions: {
+                    bar: {
+                        horizontal: false,
+                        columnWidth: '45%',
+                        borderRadius: 4
+                    },
+                },
+                dataLabels: { enabled: false },
+                stroke: { show: true, width: 2, colors: ['transparent'] },
+                xaxis: { 
+                    categories: sortedDates,
+                    labels: { style: { colors: '#64748b' } }
+                },
+                yaxis: {
+                    labels: { style: { colors: '#64748b' } }
+                },
+                colors: ['#38bdf8', '#34d399'],
+                fill: { opacity: 1 },
+                grid: { borderColor: '#f1f5f9' },
+                tooltip: {
+                    theme: 'light',
+                    y: { formatter: function (val) { return val + " item" } }
+                }
+            };
+            salesChartInstance = new ApexCharts(ctxSales, salesOptions);
+            salesChartInstance.render();
+
+            // 2. Grafik Keuntungan (ApexCharts Area)
+            const profitOptions = {
+                series: [{
+                    name: 'Profit Gas',
+                    data: profitGasValues
+                }, {
+                    name: 'Profit Aqua',
+                    data: profitAquaValues
+                }],
+                chart: {
+                    type: 'area',
+                    height: 280,
+                    toolbar: { show: false },
+                    fontFamily: 'Inter, sans-serif'
+                },
+                colors: ['#38bdf8', '#34d399'],
+                dataLabels: { enabled: false },
+                stroke: { curve: 'smooth', width: 3 },
+                xaxis: { 
+                    categories: sortedDates,
+                    labels: { style: { colors: '#64748b' } }
+                },
+                yaxis: {
+                    labels: { 
+                        style: { colors: '#64748b' },
+                        formatter: function(val) { return "Rp " + val.toLocaleString('id-ID') }
+                    }
+                },
+                grid: { borderColor: '#f1f5f9' },
+                tooltip: {
+                    theme: 'light',
+                    y: { formatter: function (val) { return "Rp " + val.toLocaleString('id-ID') } }
+                }
+            };
+            profitChartInstance = new ApexCharts(ctxProfit, profitOptions);
+            profitChartInstance.render();
+
+            // 3. Grafik Komposisi Omset (ApexCharts Donut)
+            const finalOmsetGas = (rincian["LPG Warung"]?.omset || 0) + (rincian["LPG Ecer"]?.omset || 0);
+            const finalOmsetAqua = (rincian["Aqua Warung"]?.omset || 0) + (rincian["Aqua Ecer"]?.omset || 0);
+
+            const omsetOptions = {
+                series: [finalOmsetGas, finalOmsetAqua],
+                chart: {
+                    type: 'donut',
+                    height: 280,
+                    fontFamily: 'Inter, sans-serif'
+                },
+                labels: ['Omset Gas', 'Omset Aqua'],
+                colors: ['#38bdf8', '#34d399'],
+                dataLabels: {
+                    enabled: true,
+                    formatter: function (val) {
+                        return val.toFixed(1) + "%"
+                    }
+                },
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '70%',
+                            labels: {
+                                show: true,
+                                name: { show: true },
+                                value: {
+                                    show: true,
+                                    formatter: function (val) {
+                                        return "Rp " + parseInt(val).toLocaleString('id-ID')
+                                    }
+                                },
+                                total: {
+                                    show: true,
+                                    label: 'Total Omset',
+                                    formatter: function (w) {
+                                        return "Rp " + w.globals.seriesTotals.reduce((a, b) => { return a + b }, 0).toLocaleString('id-ID')
+                                    }
+                                }
+                            }
                         }
                     }
-                }
-            });
-
-            // 2. Grafik Keuntungan
-            profitChartInstance = new Chart(ctxProfit, {
-                type: 'line',
-                data: {
-                    labels: sortedDates,
-                    datasets: [
-                        {
-                            label: 'Profit Gas (Rp)',
-                            data: profitGasValues,
-                            borderColor: '#38bdf8',
-                            backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                            fill: true,
-                            tension: 0.3,
-                            borderWidth: 3,
-                            pointRadius: 4,
-                            pointBackgroundColor: '#38bdf8'
-                        },
-                        {
-                            label: 'Profit Aqua (Rp)',
-                            data: profitAquaValues,
-                            borderColor: '#34d399',
-                            backgroundColor: 'rgba(52, 211, 153, 0.1)',
-                            fill: true,
-                            tension: 0.3,
-                            borderWidth: 3,
-                            pointRadius: 4,
-                            pointBackgroundColor: '#34d399'
-                        }
-                    ]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: '#64748b' } } },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { color: '#64748b' } },
-                        y: { 
-                            beginAtZero: true,
-                            grace: '5%',
-                            grid: { color: '#e2e8f0' }, 
-                            ticks: { 
-                                color: '#64748b',
-                                callback: function(value) { return 'Rp ' + value.toLocaleString('id-ID'); }
-                            } 
-                        }
-                    }
+                tooltip: {
+                    theme: 'light',
+                    y: { formatter: function (val) { return "Rp " + val.toLocaleString('id-ID') } }
                 }
-            });
+            };
+            window.omsetChartInstance = new ApexCharts(ctxOmset, omsetOptions);
+            window.omsetChartInstance.render();
         }
 
         // Sembunyikan Splash Screen jika ada
@@ -1473,6 +1518,7 @@ function logout() {
 async function createAccount() {
     const username = document.getElementById("regUsername").value.trim();
     const password = document.getElementById("regPassword").value.trim();
+    const whatsapp = document.getElementById("regWhatsapp").value.trim();
     const role = document.getElementById("regRole").value;
 
     if (!username || !password) {
@@ -1484,7 +1530,7 @@ async function createAccount() {
         const res = await fetch("/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password, role, requesterRole: localStorage.getItem("role") })
+            body: JSON.stringify({ username, password, role, whatsapp, requesterRole: localStorage.getItem("role") })
         });
 
         const data = await res.json();
@@ -1492,6 +1538,7 @@ async function createAccount() {
             showToast(`Akun dengan Akses [${role.toUpperCase()}] berhasil dibuat! 🎉`, "success");
             document.getElementById("regUsername").value = "";
             document.getElementById("regPassword").value = "";
+            document.getElementById("regWhatsapp").value = "";
             loadRegisteredUsers();
         } else {
             showToast("Gagal buat akun: " + (data.message || "Terjadi kesalahan"), "error");
@@ -1519,6 +1566,7 @@ async function loadRegisteredUsers() {
         users.forEach((user) => {
             const safeUsername = user.username.replace(/['"]/g, "");
             const safeRole = user.role.toLowerCase();
+            const safeWhatsapp = user.whatsapp ? user.whatsapp.replace(/['"]/g, "") : "";
             
             // Default styling untuk role user/admin
             let roleBadgeBg = user.role === 'admin' ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)';
@@ -1536,7 +1584,7 @@ async function loadRegisteredUsers() {
             // Hanya Super Admin yang bisa edit superadmin/admin. Admin biasa hanya bisa edit user biasa.
             if (currentRole === "superadmin" || (currentRole === "admin" && user.role === "user")) {
                 actionButtons = `
-                    <button onclick="openEditModal('${user.id}', '${safeUsername}', '${safeRole}')" style="background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; font-family: 'Inter', sans-serif;">
+                    <button onclick="openEditModal('${user.id}', '${safeUsername}', '${safeRole}', '${safeWhatsapp}')" style="background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; font-family: 'Inter', sans-serif;">
                         <i class='ri-edit-line'></i> Edit
                     </button>
                     <button onclick="resetUserPin('${user.id}', '${safeUsername}')" style="background: rgba(139,92,246,0.12); color: #a78bfa; border: 1px solid rgba(139,92,246,0.2); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; font-family: 'Inter', sans-serif;">
@@ -1574,11 +1622,12 @@ async function loadRegisteredUsers() {
 /* ==========================================
    MODAL EDIT USER SINKRONISASI
 ========================================== */
-function openEditModal(id, username, role) {
+function openEditModal(id, username, role, whatsapp) {
     const modal = document.getElementById("editUserModal");
     if (modal) {
         document.getElementById("editUserId").value = id;
         document.getElementById("editUsername").value = username;
+        document.getElementById("editWhatsapp").value = whatsapp || "";
         
         const roleSelect = document.getElementById("editRole");
         if (roleSelect) {
@@ -1631,6 +1680,7 @@ async function simpanPerubahanUser() {
     const id = document.getElementById("editUserId").value;
     const username = document.getElementById("editUsername").value.trim();
     const password = document.getElementById("editPassword").value.trim();
+    const whatsapp = document.getElementById("editWhatsapp").value.trim();
     const role = document.getElementById("editRole").value;
 
     if (!username) {
@@ -1642,7 +1692,7 @@ async function simpanPerubahanUser() {
         const res = await fetch(`/api/users/update/${id}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password, role, requesterRole: localStorage.getItem("role") })
+            body: JSON.stringify({ username, password, role, whatsapp, requesterRole: localStorage.getItem("role") })
         });
 
         const data = await res.json();

@@ -88,20 +88,24 @@ db.serialize(() => {
         }
     });
 
-    // 2. Tabel Users + Enkripsi Password Default + PIN Column
+    // 2. Tabel Users + Enkripsi Password Default + PIN Column + WhatsApp Column
     db.run(`
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE,
             password TEXT,
             role TEXT DEFAULT 'user',
-            pin TEXT DEFAULT NULL
+            pin TEXT DEFAULT NULL,
+            whatsapp TEXT DEFAULT NULL
         )
     `, async (err) => {
         if (!err) {
-            // Migrasi: tambah kolom PIN untuk database lama
+            // Migrasi: tambah kolom PIN & WhatsApp untuk database lama
             db.run(`ALTER TABLE users ADD COLUMN pin TEXT DEFAULT NULL`, (alterErr) => {
                 if (!alterErr) console.log("🔐 Kolom PIN berhasil ditambahkan!");
+            });
+            db.run(`ALTER TABLE users ADD COLUMN whatsapp TEXT DEFAULT NULL`, (alterErr) => {
+                if (!alterErr) console.log("📱 Kolom WhatsApp berhasil ditambahkan!");
             });
 
             // Migrasi: Upgrade akun 'admin' default menjadi 'superadmin'
@@ -430,6 +434,104 @@ app.post("/api/forgot-password", loginLimiter, (req, res) => {
 /* ==========================================
    API ENDPOINTS: PIN AUTHENTICATOR
 ========================================== */
+// OTP Memory Storage (In a real scalable app, use DB/Redis)
+const otpStore = {}; // { username: { otp: "123456", expiresAt: timestamp } }
+
+app.post("/api/auth/request-reset", loginLimiter, (req, res) => {
+    const { username } = req.body;
+    
+    if (!username) return res.status(400).json({ success: false, message: "Username wajib diisi!" });
+
+    db.get(`SELECT username, whatsapp FROM users WHERE username = ?`, [username], async (err, row) => {
+        if (err || !row) return res.status(404).json({ success: false, message: "Username tidak ditemukan!" });
+        
+        if (!row.whatsapp) {
+            return res.status(400).json({ success: false, message: "Belum ada nomor WhatsApp yang didaftarkan untuk user ini!" });
+        }
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = Date.now() + 5 * 60 * 1000; // 5 menit expired
+
+        otpStore[username] = { otp, expiresAt };
+
+        // Send via Fonnte API
+        const fonnteToken = process.env.FONNTE_TOKEN;
+        if (!fonnteToken) {
+            console.error("FONNTE_TOKEN tidak dikonfigurasi di .env");
+            return res.status(500).json({ success: false, message: "Konfigurasi WhatsApp API (Fonnte Token) belum disetel di server!" });
+        }
+
+        try {
+            const response = await fetch("https://api.fonnte.com/send", {
+                method: "POST",
+                headers: {
+                    "Authorization": fonnteToken,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    target: row.whatsapp,
+                    message: `*RESET PIN/PASSWORD PANGKALAN ADEQUA*\n\nHalo ${username},\nKode OTP Anda adalah: *${otp}*\n\nKode ini akan hangus dalam 5 menit. JANGAN berikan kode ini kepada siapapun!`,
+                    countryCode: "62"
+                })
+            });
+            const data = await response.json();
+            
+            if (data.status) {
+                res.json({ success: true, message: `Kode OTP berhasil dikirim ke nomor WhatsApp berakhiran ...${row.whatsapp.slice(-4)}` });
+            } else {
+                console.error("Fonnte error:", data);
+                res.status(500).json({ success: false, message: "Gagal mengirim WhatsApp. Pastikan token valid." });
+            }
+        } catch (fetchErr) {
+            console.error("Error calling Fonnte:", fetchErr);
+            res.status(500).json({ success: false, message: "Kesalahan internal saat memanggil API WhatsApp." });
+        }
+    });
+});
+
+app.post("/api/auth/reset-pin", loginLimiter, async (req, res) => {
+    const { username, otp, newPin, newPassword } = req.body;
+
+    if (!username || !otp) return res.status(400).json({ success: false, message: "Username dan OTP wajib diisi!" });
+    if (!newPin && !newPassword) return res.status(400).json({ success: false, message: "Minimal isi PIN atau Password baru!" });
+
+    const storedData = otpStore[username];
+    
+    if (!storedData) {
+        return res.status(400).json({ success: false, message: "OTP tidak valid atau kadaluarsa (belum request)." });
+    }
+    if (Date.now() > storedData.expiresAt) {
+        delete otpStore[username];
+        return res.status(400).json({ success: false, message: "Kode OTP sudah hangus! Silakan request ulang." });
+    }
+    if (storedData.otp !== otp) {
+        return res.status(400).json({ success: false, message: "Kode OTP salah!" });
+    }
+
+    // OTP Valid! Reset
+    try {
+        if (newPin) {
+            const hashedPin = await bcrypt.hash(newPin, SALT_ROUNDS);
+            db.run(`UPDATE users SET pin = ? WHERE username = ?`, [hashedPin, username], function(err) {
+                if (err) return res.status(500).json({ success: false, message: "Gagal reset PIN" });
+                delete otpStore[username];
+                res.json({ success: true, message: "PIN berhasil direset! Silakan login." });
+            });
+        } else if (newPassword) {
+            const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+            db.run(`UPDATE users SET password = ? WHERE username = ?`, [hashedPassword, username], function(err) {
+                if (err) return res.status(500).json({ success: false, message: "Gagal reset Password" });
+                delete otpStore[username];
+                res.json({ success: true, message: "Password berhasil direset! Silakan login." });
+            });
+        }
+    } catch (hashErr) {
+        console.error("Error hashing during reset:", hashErr);
+        res.status(500).json({ success: false, message: "Gagal mengenkripsi PIN/Password baru." });
+    }
+});
+
 app.post("/api/verify-pin", pinLimiter, (req, res) => {
     const { username, pin } = req.body;
     if (!username || !pin) return res.status(400).json({ success: false, message: "Username dan PIN wajib diisi!" });
@@ -500,7 +602,7 @@ app.post("/api/reset-pin/:id", verifyToken, (req, res) => {
 });
 
 app.post("/register", verifyToken, async (req, res) => {
-    const { username, password, role } = req.body;
+    const { username, password, role, whatsapp } = req.body;
     const requesterRole = req.user.role;
     const userRole = role || "user";
 
@@ -518,9 +620,9 @@ app.post("/register", verifyToken, async (req, res) => {
 
     try {
         const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
-        const query = `INSERT INTO users (username, password, role) VALUES (?, ?, ?)`;
+        const query = `INSERT INTO users (username, password, role, whatsapp) VALUES (?, ?, ?, ?)`;
 
-        db.run(query, [username, hashedPassword, userRole], function (err) {
+        db.run(query, [username, hashedPassword, userRole, whatsapp || null], function (err) {
             if (err) {
                 if (err.message.includes("UNIQUE constraint failed")) {
                     return res.status(400).json({ success: false, message: "Username sudah terdaftar bro!" });
@@ -535,7 +637,7 @@ app.post("/register", verifyToken, async (req, res) => {
 });
 
 app.get("/api/users", verifyToken, (req, res) => {
-    db.all(`SELECT id, username, role FROM users ORDER BY id DESC`, [], (err, rows) => {
+    db.all(`SELECT id, username, role, whatsapp FROM users ORDER BY id DESC`, [], (err, rows) => {
         if (err) return res.status(500).json({ success: false, message: "Gagal mengambil data user" });
         res.json(rows);
     });
@@ -543,7 +645,7 @@ app.get("/api/users", verifyToken, (req, res) => {
 
 app.post("/api/users/update/:id", verifyToken, async (req, res) => {
     const id = req.params.id;
-    const { username, password, role } = req.body;
+    const { username, password, role, whatsapp } = req.body;
     const requesterRole = req.user.role;
 
     if (!id || !username || !role) {
@@ -565,8 +667,8 @@ app.post("/api/users/update/:id", verifyToken, async (req, res) => {
             try {
                 if (password && password.trim() !== "") {
                     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
-                    const query = `UPDATE users SET username = ?, password = ?, role = ? WHERE id = ?`;
-                    db.run(query, [username, hashedPassword, role, id], function (err) {
+                    const query = `UPDATE users SET username = ?, password = ?, role = ?, whatsapp = ? WHERE id = ?`;
+                    db.run(query, [username, hashedPassword, role, whatsapp || null, id], function (err) {
                         if (err) {
                             if (err.message.includes("UNIQUE constraint failed")) return res.status(400).json({ success: false, message: "Username sudah dipakai!" });
                             return res.status(500).json({ success: false, message: "Gagal memperbarui profil" });
@@ -574,8 +676,8 @@ app.post("/api/users/update/:id", verifyToken, async (req, res) => {
                         res.json({ success: true, message: "Profil dan password berhasil diupdate!" });
                     });
                 } else {
-                    const query = `UPDATE users SET username = ?, role = ? WHERE id = ?`;
-                    db.run(query, [username, role, id], function (err) {
+                    const query = `UPDATE users SET username = ?, role = ?, whatsapp = ? WHERE id = ?`;
+                    db.run(query, [username, role, whatsapp || null, id], function (err) {
                         if (err) {
                             if (err.message.includes("UNIQUE constraint failed")) return res.status(400).json({ success: false, message: "Username sudah dipakai!" });
                             return res.status(500).json({ success: false, message: "Gagal memperbarui profil" });
