@@ -101,10 +101,8 @@
     </div>
 
     <div class="main">
-        <!-- Mobile Toggle Button -->
-        <button class="mobile-toggle" onclick="toggleMobileMenu()">
-            <i class="ri-menu-line"></i>
-        </button>
+        <!-- Mobile Toggle Button (Removed for Bottom Nav) -->
+
 
         <!-- ========== DASHBOARD PAGE ========== -->
         <div id="dashboardPage" class="page-content active">
@@ -1040,10 +1038,26 @@
         }
     </script>
 
-    <!-- Mobile Menu FAB -->
-    <button class="mobile-menu-fab" onclick="toggleMobileMenu()">
-        <i class="ri-menu-line"></i>
-    </button>
+    <!-- Modern Mobile Bottom Navigation -->
+    <nav class="bottom-nav">
+        <div class="bottom-nav-item active" onclick="showPage('dashboardPage'); updateBottomNav(this)">
+            <i class="ri-dashboard-3-fill"></i>
+            <span>Beranda</span>
+        </div>
+        <div class="bottom-nav-item" onclick="showPage('posPage'); updateBottomNav(this)">
+            <i class="ri-shopping-cart-2-fill"></i>
+            <span>POS</span>
+        </div>
+        <div class="bottom-nav-item" onclick="showPage('inputPage'); updateBottomNav(this)">
+            <i class="ri-file-add-fill"></i>
+            <span>Input</span>
+        </div>
+        <div class="bottom-nav-item" onclick="toggleMobileMenu(); updateBottomNav(this)">
+            <i class="ri-menu-4-line"></i>
+            <span>Lainnya</span>
+        </div>
+    </nav>
+
 
     <!-- Register Service Worker -->
     <script>

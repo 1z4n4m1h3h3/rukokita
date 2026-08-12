@@ -307,12 +307,18 @@ function showPage(pageId){
 function toggleMobileMenu() {
     const sidebar = document.getElementById("sidebar");
     const overlay = document.getElementById("mobileOverlay");
-    const bottomNav = document.querySelector(".mobile-menu-fab");
     
     if (sidebar && overlay) {
         sidebar.classList.toggle("show-sidebar");
         overlay.classList.toggle("show-overlay");
-        if (bottomNav) bottomNav.classList.toggle("hide-fab");
+    }
+}
+
+function updateBottomNav(clickedElement) {
+    const navItems = document.querySelectorAll('.bottom-nav-item');
+    navItems.forEach(item => item.classList.remove('active'));
+    if (clickedElement) {
+        clickedElement.classList.add('active');
     }
 }
 

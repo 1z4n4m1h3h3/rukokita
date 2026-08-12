@@ -1213,50 +1213,134 @@ tr:hover {
 /* =========================
    MOBILE BOTTOM NAVIGATION (MODERN UI)
 ========================= */
-.mobile-menu-fab {
-    display: none; /* Sembunyikan di desktop */
+.bottom-nav {
+    display: none;
 }
 
 @media (max-width: 768px) {
-    /* Sembunyikan toggle lama */
+    /* Hide old toggle */
     .mobile-toggle {
         display: none !important;
     }
 
-    /* Padding bawah normal */
+    /* Padding bottom for main content so it is not covered by bottom nav */
     .main {
-        padding-bottom: 30px !important;
+        padding-bottom: 90px !important;
     }
 
-    /* Style Floating Action Button */
-    .mobile-menu-fab {
+    /* Bottom Navigation Bar */
+    .bottom-nav {
         display: flex;
         position: fixed;
-        bottom: 24px;
-        right: 24px;
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        background: var(--gradient-blue);
-        color: white;
-        border: none;
-        box-shadow: 0 4px 20px rgba(37, 99, 235, 0.5);
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 70px;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-top: 1px solid rgba(255, 255, 255, 0.5);
+        box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.05);
+        z-index: 1000;
+        justify-content: space-around;
+        align-items: center;
+        padding: 0 10px;
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .bottom-nav-item {
+        display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        font-size: 28px;
-        z-index: 1000;
+        width: 60px;
+        height: 100%;
+        color: var(--text-muted);
         cursor: pointer;
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
     }
 
-    .mobile-menu-fab:active {
-        transform: scale(0.9);
+    .bottom-nav-item i {
+        font-size: 22px;
+        margin-bottom: 4px;
+        transition: transform 0.3s ease, color 0.3s ease;
     }
 
-    .mobile-menu-fab.hide-fab {
-        transform: scale(0) rotate(-90deg);
+    .bottom-nav-item span {
+        font-size: 11px;
+        font-weight: 600;
+        opacity: 0.8;
+        transition: opacity 0.3s ease, font-weight 0.3s ease;
+    }
+
+    .bottom-nav-item.active {
+        color: var(--accent-blue);
+    }
+
+    .bottom-nav-item.active i {
+        transform: translateY(-4px);
+        color: var(--accent-blue);
+        text-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);
+    }
+
+    .bottom-nav-item.active span {
+        opacity: 1;
+        font-weight: 700;
+        transform: translateY(-2px);
+    }
+    
+    /* Active Indicator Dot */
+    .bottom-nav-item::after {
+        content: '';
+        position: absolute;
+        bottom: 8px;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--accent-blue);
         opacity: 0;
-        pointer-events: none;
+        transform: scale(0);
+        transition: all 0.3s ease;
+    }
+    
+    .bottom-nav-item.active::after {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    /* Transform Sidebar into Bottom Sheet on Mobile */
+    .sidebar {
+        width: 100%;
+        min-height: auto;
+        height: auto;
+        max-height: 80vh;
+        top: auto;
+        bottom: 0;
+        border-right: none;
+        border-top-left-radius: 24px;
+        border-top-right-radius: 24px;
+        transform: translateY(100%);
+        padding: 24px 20px 40px 20px;
+        box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
+        overflow-y: auto;
+    }
+
+    .sidebar.show-sidebar {
+        transform: translateY(0);
+    }
+    
+    /* Add a drag handle to the bottom sheet */
+    .sidebar::before {
+        content: '';
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 4px;
+        background: var(--border-medium);
+        border-radius: 4px;
     }
 }
 
